@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>栽培ノート（試作2）</title>
+<style>
+:root{--g:#006e54;--gt:#006e54;--g2:#e2f0eb;--ink:#1f2a22;--mut:#667066;--line:#d9e0d9;--bg:#f6f8f5;--warn:#b25a00;--warnbg:#fff4e2;--red:#b3261e}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic UI","Noto Sans JP",Meiryo,sans-serif;color:var(--ink);background:var(--bg);font-size:16px;line-height:1.5;padding-bottom:76px}
+header{background:var(--g);color:#fff;padding:12px 16px}
+header h1{margin:0;font-size:18px;font-weight:600}
+header small{font-weight:400;opacity:.8;margin-left:6px;font-size:13px}
+main{max-width:760px;margin:0 auto;padding:14px}
+h2{font-size:17px;margin:18px 0 8px}
+h3{font-size:15px;margin:14px 0 6px;color:var(--mut);font-weight:600}
+.card{background:#fff;border:1px solid var(--line);border-radius:10px;padding:12px;margin:8px 0}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+.row>*{flex:1 1 140px}
+button,.btn{font:inherit;border:1px solid var(--g);background:#fff;color:var(--gt);border-radius:8px;padding:10px 14px;cursor:pointer;min-height:44px}
+button.pri{background:var(--g);color:#fff;font-weight:600}
+button.big{padding:16px 10px;font-size:17px;font-weight:600}
+button.sm{min-height:36px;padding:6px 10px;font-size:14px}
+button.danger{border-color:var(--red);color:var(--red)}
+button.tab{border-color:var(--line);color:var(--ink);min-height:38px;padding:6px 12px;font-size:14px;flex:0 0 auto}
+button.tab.on{background:var(--g2);border-color:var(--gt);color:var(--gt);font-weight:600}
+.tabs{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px}
+.item{display:block;width:100%;text-align:left;background:#fff;border:1px solid var(--line);color:var(--ink);border-radius:10px;padding:10px 12px;margin:6px 0;min-height:0}
+.item .t{font-weight:600}
+.item .s{color:var(--mut);font-size:14px}
+.tag{display:inline-block;font-size:12px;border-radius:99px;padding:1px 9px;margin-right:6px;background:var(--g2);color:var(--gt);font-weight:600}
+.tag.f{background:#eef0fb;color:#3a4a9a}.tag.w{background:#eceff1;color:#37474f}.tag.h{background:#fdf0e0;color:#8a5200}
+.warn{background:var(--warnbg);border:1px solid #f0cf9a;color:var(--warn);border-radius:10px;padding:10px 12px;margin:8px 0;font-size:14px}
+.mut{color:var(--mut);font-size:14px}
+label{display:block;font-size:14px;color:var(--mut);margin:10px 0 3px}
+input,select,textarea{font:inherit;width:100%;padding:10px;border:1px solid #b9c3b9;border-radius:8px;background:#fff;color:var(--ink)}
+input[type=checkbox]{width:22px;height:22px;margin:0 8px 0 0;flex:0 0 auto}
+.chk{display:flex;align-items:center;padding:8px 0;font-size:16px;color:var(--ink);margin:0}
+.new{margin-top:6px;font-size:14px}
+nav{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--line);display:flex;justify-content:center}
+nav button{flex:1;max-width:160px;border:0;border-radius:0;color:var(--mut);font-size:13px;padding:10px 2px;min-height:56px}
+nav button.on{color:var(--gt);font-weight:700;box-shadow:inset 0 3px 0 var(--g)}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:flex-end;justify-content:center;z-index:10}
+.modal[hidden]{display:none}
+.sheet{background:#fff;width:100%;max-width:760px;max-height:92vh;overflow:auto;border-radius:14px 14px 0 0;padding:16px}
+.sheet h2{margin-top:0}
+.err{color:var(--red);font-size:14px;margin-top:8px}
+.acts{display:flex;gap:8px;flex-wrap:wrap;position:sticky;bottom:0;background:#fff;margin:16px -16px 0;padding:10px 16px calc(10px + env(safe-area-inset-bottom));border-top:1px solid var(--line);z-index:2}
+.acts .err{flex:1 1 100%;margin:0}
+.sheet{padding-bottom:0!important}
+.miss{outline:2px solid var(--red);outline-offset:2px;border-radius:8px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0}
+.chip{min-height:44px;padding:5px 10px;font-size:15px;border:1px solid #b9c3b9;color:var(--ink);background:#fff;border-radius:10px;text-align:left;line-height:1.25;flex:0 1 auto}
+.chip small{display:block;color:var(--mut);font-size:12px}
+.chip.on{background:var(--g);border-color:var(--g);color:#fff;font-weight:600}
+.chip.on small{color:#d6efe6}
+.pkbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.pkbar input[type=search]{flex:1 1 160px;padding:8px}
+.sw{display:flex;align-items:center;gap:6px;margin:0;color:var(--ink);font-size:15px;flex:0 0 auto}
+.sw input{width:22px;height:22px;margin:0}
+.pkmore{display:block;width:100%;min-height:40px;margin:2px 0 4px;padding:6px 10px;font-size:14px;border:0;border-top:1px dashed var(--line);border-radius:0;background:none;color:var(--gt);text-align:center}
+.fd{margin:0 -10px;padding:0 10px 10px;border-radius:10px;border-left:4px solid transparent}
+.fd.req{background:var(--g2);border-left-color:var(--g);margin-top:8px}
+.fd.req+.fd.req{margin-top:4px}
+.fd>label:first-child,.fd>.frow>.fc>label:first-child,.fd>#pkwrap>label:first-child{margin-top:6px}
+.legend{font-size:13px;color:var(--mut);margin:-6px 0 4px}
+.legend i{display:inline-block;width:14px;height:14px;vertical-align:-2px;background:var(--g2);border-left:4px solid var(--g);border-radius:3px;margin-right:4px}
+.std{border:1px solid var(--line);border-radius:10px;padding:8px 10px;margin:8px 0 0;background:#fff;font-size:14px;line-height:1.45}
+.std.ng{border-color:#e0a49c;background:#fff6f5}
+.std ul{margin:4px 0 0;padding-left:18px}.std li{margin:2px 0}.std li.w{color:var(--red);font-weight:600}
+.std .cr{color:var(--mut);font-size:13px}
+.fsearch{background:#f4f6f4;border:1px solid var(--line);border-radius:10px;padding:2px 10px 10px;margin-top:6px}
+.fres .item{padding:8px 10px;margin:4px 0}
+.fnote{font-size:12px;color:var(--mut);line-height:1.5}.fnote p{margin:6px 0}
+.okmsg button,.warn button{margin-top:6px}
+.frow{display:flex;gap:8px;align-items:flex-end}
+.frow>.fc{flex:1 1 0;min-width:0}
+.frow>.fc.s{flex:0 0 92px}
+.frow label{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.okmsg{background:var(--g2);border:1px solid #9fcdbd;color:#00513e;border-radius:10px;padding:10px 12px;margin:8px 0;font-size:14px}
+.acts .pri{flex:2}
+#toast{position:fixed;left:50%;bottom:86px;transform:translateX(-50%);background:#1f2a22;color:#fff;padding:10px 16px;border-radius:8px;font-size:14px;z-index:20;max-width:90%}
+#toast[hidden]{display:none}
+table{border-collapse:collapse;width:100%;font-size:14px}
+td,th{border-bottom:1px solid var(--line);padding:6px 4px;text-align:left}
+td.n{text-align:right}
+label.btn{display:inline-flex;align-items:center;justify-content:center;color:var(--gt);font-size:16px;margin:0;flex:1 1 140px}
+.ph{display:flex;flex-wrap:wrap;gap:10px;margin:4px 0 8px}
+.ph .p{position:relative;width:84px;height:84px}
+.ph .pv{padding:0;border:0;width:100%;height:100%;min-height:0;background:none}
+.ph img,.th img{width:100%;height:100%;object-fit:cover;border-radius:8px;border:1px solid var(--line);display:block}
+.ph .x{position:absolute;top:-8px;right:-8px;width:28px;height:28px;min-height:0;padding:0;border-radius:50%;background:#fff;color:var(--red);border-color:var(--red);font-size:16px;line-height:1}
+.th{display:flex;gap:6px;margin-top:6px;align-items:center}
+.th span{width:56px;height:56px;display:block}
+#viewer{position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:30;display:flex;align-items:center;justify-content:center;padding:8px}
+#viewer[hidden]{display:none}
+#viewer img{max-width:100%;max-height:100%}
+</style>
+</head>
+<body>
+<header><h1>栽培ノート<small>試作2</small></h1></header>
+<main id="app"></main>
+<nav id="nav"></nav>
+<div id="modal" class="modal" hidden></div>
+<div id="toast" hidden></div>
+<div id="viewer" hidden data-act="closeViewer"></div>
+<script src="crop-match.js"></script>
+<script>
+'use strict';
+const $=s=>document.querySelector(s);
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,8);
+const pad=n=>String(n).padStart(2,'0');
+const today=()=>{const d=new Date();return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())};
+const COLS=['fields','crops','plantings','tasks','pesticides','fertilizers','machines','workers','records'];
+const emptyDb=()=>{const d={app:'seisan-kiroku',version:1,meta:{farmName:'',lastExport:'',last:{}}};COLS.forEach(c=>d[c]=[]);return d};
+let db=emptyDb(),storeMode='mem',view='home',sub={master:'fields',type:'',planting:''};
+
+/* ---------- 保存 ---------- */
+const KEY='seisan-kiroku-db';
+let _idb=null;
+function idb(){if(_idb)return Promise.resolve(_idb);return new Promise((res,rej)=>{let done=false;setTimeout(()=>{if(!done)rej(new Error('timeout'))},3000);
+  const r=indexedDB.open('seisan-kiroku',2);r.onupgradeneeded=()=>{const d=r.result;if(!d.objectStoreNames.contains('kv'))d.createObjectStore('kv');if(!d.objectStoreNames.contains('photos'))d.createObjectStore('photos')};
+  r.onsuccess=()=>{done=true;_idb=r.result;_idb.onversionchange=()=>{_idb.close();_idb=null};res(_idb)};r.onerror=()=>{done=true;rej(r.error)}})}
+async function idbGet(){const d=await idb();return new Promise((res,rej)=>{const q=d.transaction('kv').objectStore('kv').get(KEY);q.onsuccess=()=>res(q.result);q.onerror=()=>rej(q.error)})}
+async function idbSet(v){const d=await idb();return new Promise((res,rej)=>{const t=d.transaction('kv','readwrite');t.objectStore('kv').put(v,KEY);t.oncomplete=()=>res();t.onerror=()=>rej(t.error)})}
+/* 写真：本体はIndexedDBの photos に1枚ずつ保存。一覧用の縮小画像は起動時に読み込む */
+const thumbs={},memPhotos={};
+async function photoPut(p){if(!p.thumb)p.thumb=p.data;thumbs[p.id]=p.thumb;
+  if(storeMode!=='idb'){memPhotos[p.id]=p;return}
+  const d=await idb();await new Promise((res,rej)=>{const t=d.transaction('photos','readwrite');t.objectStore('photos').put(p,p.id);t.oncomplete=()=>res();t.onerror=()=>rej(t.error)})}
+async function photoGet(id){if(memPhotos[id])return memPhotos[id];if(storeMode!=='idb')return null;
+  const d=await idb();return new Promise((res,rej)=>{const q=d.transaction('photos').objectStore('photos').get(id);q.onsuccess=()=>res(q.result||null);q.onerror=()=>rej(q.error)})}
+async function loadThumbs(){const d=await idb();await new Promise(res=>{const q=d.transaction('photos').objectStore('photos').openCursor();
+  q.onsuccess=()=>{const c=q.result;if(c){thumbs[c.key]=c.value.thumb||c.value.data;c.continue()}else res()};q.onerror=()=>res()})}
+function loadImg(file){return new Promise((res,rej)=>{const u=URL.createObjectURL(file),i=new Image();i.onload=()=>{URL.revokeObjectURL(u);res(i)};i.onerror=()=>{URL.revokeObjectURL(u);rej(new Error('img'))};i.src=u})}
+function scaleImg(img,max,q){const w=img.naturalWidth,h=img.naturalHeight,r=Math.min(1,max/Math.max(w,h));const c=document.createElement('canvas');c.width=Math.max(1,Math.round(w*r));c.height=Math.max(1,Math.round(h*r));
+  const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);x.drawImage(img,0,0,c.width,c.height);return c.toDataURL('image/jpeg',q)}
+async function makePhoto(file){const img=await loadImg(file);return{id:uid(),data:scaleImg(img,1600,.75),thumb:scaleImg(img,240,.6),createdAt:new Date().toISOString()}}
+const usedPhotoIds=()=>[...new Set(live('records').flatMap(r=>r.photoIds||[]))];
+function norm(v){const d=emptyDb();Object.assign(d.meta,v.meta||{});d.meta.last=d.meta.last||{};COLS.forEach(c=>{if(Array.isArray(v[c]))d[c]=v[c]});return d}
+function seedTasks(){if(db.meta.seededTasks)return;db.meta.seededTasks=1;
+  if(!live('tasks').length)['耕起','畝立て','かん水','除草','草刈り','誘引','摘葉','摘果','片付け'].forEach(n=>upsert('tasks',{name:n}))}
+async function load(){
+  try{const v=await idbGet();storeMode='idb';if(v)db=norm(v);try{await loadThumbs()}catch(e){}return}catch(e){}
+  try{const v=localStorage.getItem(KEY);storeMode='ls';if(v)db=norm(JSON.parse(v));return}catch(e){}
+  storeMode='mem';
+}
+async function save(){dbVer++;
+  try{if(storeMode==='idb')await idbSet(db);else if(storeMode==='ls')localStorage.setItem(KEY,JSON.stringify(db))}
+  catch(e){toast('端末への保存に失敗しました。「データ」から書き出してください。')}
+}
+function askPersist(){try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist().catch(()=>{})}catch(e){}}
+
+/* ---------- データ操作 ---------- */
+const live=c=>db[c].filter(x=>!x.deleted);
+const byId=(c,id)=>db[c].find(x=>x.id===id);
+function upsert(c,o){o.updatedAt=new Date().toISOString();if(!o.id){o.id=uid();db[c].push(o)}else{const i=db[c].findIndex(x=>x.id===o.id);if(i>=0)db[c][i]=o;else db[c].push(o)}return o}
+function removeItem(c,id){const x=byId(c,id);if(x){x.deleted=true;x.updatedAt=new Date().toISOString()}}
+function plantingLabel(p){if(!p)return'（作付なし）';const f=byId('fields',p.fieldId),c=byId('crops',p.cropId);
+  return (f?f.name:'圃場未設定')+'｜'+(c?c.name+(c.variety?'（'+c.variety+'）':''):'品目未設定')+(p.season?'｜'+p.season:'')}
+function refLabel(c,x){if(!x)return'';if(c==='plantings')return plantingLabel(x);if(c==='crops')return x.name+(x.variety?'（'+x.variety+'）':'');return x.name||''}
+
+/* ---------- 定義 ---------- */
+const MASTERS={
+  fields:{label:'圃場',defs:[{k:'name',l:'圃場名・番号',req:1},{k:'lot',l:'所在地（地番・施設番号など）'},{k:'area',l:'面積（a）',t:'number'},{k:'water',l:'取水・排水経路'},{k:'note',l:'周辺リスクなどのメモ',t:'textarea'}],
+    sub:x=>[x.lot,x.area!==''&&x.area!=null?x.area+'a':''].filter(Boolean).join('　')},
+  crops:{label:'品目',defs:[{k:'name',l:'品目名',req:1},{k:'variety',l:'品種（品種ごとに作付を分ける場合）'}],sub:x=>{const it=cmItemFor(x.name);return [x.variety,it?(it.custom?'農薬の照合：対応表にない品目（同じ作物名の登録だけ）':'農薬の照合：'+it.name):''].filter(Boolean).join('　')}},
+  plantings:{label:'作付',defs:[{k:'fieldId',l:'圃場',t:'ref',ref:'fields',add:1,req:1},{k:'cropId',l:'品目',t:'ref',ref:'crops',add:1,req:1},
+    {k:'season',l:'作期（例：2026年 春作）'},{k:'varietyNote',l:'作付メモ（品種など）'},{k:'type',l:'栽培区分（例：慣行、特別栽培）'},{k:'area',l:'作付面積（a）',t:'number'},
+    {k:'start',l:'開始日',t:'date'},{k:'harvestPlan',l:'収穫予定時期'},{k:'done',l:'この作付は終了した',t:'check'}],
+    sub:x=>[x.varietyNote?'メモ：'+x.varietyNote:'',x.type,x.area!==''&&x.area!=null?x.area+'a':'',x.done?'終了':''].filter(Boolean).join('　')},
+  tasks:{label:'作業',defs:[{k:'name',l:'作業名（例：耕起、かん水、誘引）',req:1},{k:'note',l:'メモ',t:'textarea'}],sub:x=>x.note||''},
+  pesticides:{label:'農薬',defs:[{k:'_famic',t:'famic'},{k:'name',l:'農薬の名称',req:1},{k:'regNo',l:'登録番号'},{k:'ingredient',l:'有効成分'},{k:'note',l:'メモ（使用基準など）',t:'textarea'}],
+    sub:x=>[x.regNo?'登録番号 '+x.regNo:'',x.ingredient,x.famic?'登録情報 '+x.famic.asOf+'反映':'登録情報なし'].filter(Boolean).join('　')},
+  fertilizers:{label:'肥料等',defs:[{k:'name',l:'名称',req:1},{k:'kind',l:'種別',t:'select',opts:['肥料','堆肥','土壌改良資材']},{k:'n',l:'窒素成分（%）',t:'number'}],
+    sub:x=>[x.kind,x.n!==''&&x.n!=null?'N '+x.n+'%':''].filter(Boolean).join('　')},
+  machines:{label:'機械・設備',defs:[{k:'name',l:'名称',req:1},{k:'use',l:'用途'}],sub:x=>x.use||''},
+  workers:{label:'作業者',defs:[{k:'name',l:'氏名',req:1}],sub:()=>''}
+};
+const RT={
+  work:{label:'作業',tag:'w',defs:[
+    {k:'itemId',l:'作業',t:'ref',ref:'tasks',add:1,req:1},
+    {k:'hours',l:'作業時間（時間）',t:'number',row:'w1'},
+    {k:'people',l:'人数',t:'number',row:'w1',s:1},
+    {k:'machineId',l:'使用機械',t:'ref',ref:'machines',add:1}]},
+  harvest:{label:'収穫',tag:'h',defs:[
+    {k:'amount',l:'収穫量',t:'number',req:1,row:'h1'},
+    {k:'unit',l:'単位',t:'select',opts:['kg','箱','袋','本','個','束','t'],row:'h1',s:1},
+    {k:'_phi',t:'phi'}]},
+  pesticide:{label:'農薬使用',tag:'',defs:[
+    {k:'itemId',l:'農薬',t:'ref',ref:'pesticides',add:1,req:1},
+    {k:'_std',t:'std'},
+    {k:'dilution',l:'希釈倍数（倍）',t:'number',row:'p1'},
+    {k:'sprayVol',l:'散布液量 L/10a',t:'number',row:'p1'},
+    {k:'amount',l:'使用量（10a当たり。希釈しない場合）'},
+    {k:'target',l:'対象の病害虫・雑草',list:'tglist'},
+    {k:'machineId',l:'防除機',t:'ref',ref:'machines',add:1},
+    {k:'weather',l:'天候',t:'select',opts:['','晴','曇','雨'],row:'p2',s:1},
+    {k:'wind',l:'風',t:'select',opts:['','無風','弱い','やや強い','強い'],row:'p2'},
+    {k:'endTime',l:'散布終了時刻',t:'time',row:'p2'}]},
+  fertilizer:{label:'施肥',tag:'f',defs:[
+    {k:'itemId',l:'肥料等',t:'ref',ref:'fertilizers',add:1,req:1},
+    {k:'amount',l:'施肥量',t:'number',req:1,row:'f1'},
+    {k:'unit',l:'単位',t:'select',opts:['kg','L','袋','t'],row:'f1',s:1},
+    {k:'area',l:'施用面積 a',t:'number',row:'f1'},
+    {k:'method',l:'施肥方法'},
+    {k:'machineId',l:'使用機械',t:'ref',ref:'machines',add:1}]}
+};
+const itemCol=t=>({pesticide:'pesticides',fertilizer:'fertilizers',work:'tasks'})[t]||null;
+function recSummary(r){
+  const n=itemCol(r.type)?refLabel(itemCol(r.type),byId(itemCol(r.type),r.itemId)):'';
+  if(r.type==='pesticide')return [n,r.dilution!==''&&r.dilution!=null?r.dilution+'倍':'',r.sprayVol!==''&&r.sprayVol!=null?r.sprayVol+'L/10a':'',r.amount].filter(Boolean).join('　');
+  if(r.type==='work')return [n,r.hours!==''&&r.hours!=null?r.hours+'時間':'',r.people!==''&&r.people!=null?r.people+'人':''].filter(Boolean).join('　');
+  if(r.type==='fertilizer')return [n,(r.amount!==''&&r.amount!=null?r.amount:'')+(r.unit||'')].filter(Boolean).join('　');
+  return (r.amount!==''&&r.amount!=null?r.amount:'')+(r.unit||'')+(r.lot?'　ロット '+r.lot:'');
+}
+const sortedRecs=()=>live('records').slice().sort((a,b)=>(b.date||'').localeCompare(a.date||'')||(b.updatedAt||'').localeCompare(a.updatedAt||''));
+
+/* ---------- フォーム ---------- */
+function fieldHtml(d,v){
+  const t=d.t||'text',id='f_'+d.k,lab=`<label for="${id}">${esc(d.l)}${d.req?' <span style="color:var(--red)">必須</span>':''}</label>`;
+  if(t==='check')return `<label class="chk"><input type="checkbox" name="${d.k}" ${v?'checked':''}>${esc(d.l)}</label>`;
+  if(t==='textarea')return lab+`<textarea id="${id}" name="${d.k}" rows="2">${esc(v)}</textarea>`;
+  if(t==='select')return lab+`<select id="${id}" name="${d.k}">${d.opts.map(o=>`<option ${o===(v||'')?'selected':''}>${esc(o)}</option>`).join('')}</select>`;
+  if(t==='ref'){
+    let list=live(d.ref);if(d.active)list=list.filter(x=>!x.done||x.id===v);
+    const cur=v&&!list.find(x=>x.id===v)?byId(d.ref,v):null;if(cur)list=[cur].concat(list);
+    return lab+`<select id="${id}" name="${d.k}"><option value="">（選択）</option>${list.map(x=>`<option value="${x.id}" ${x.id===v?'selected':''}>${esc(refLabel(d.ref,x))}</option>`).join('')}</select>`
+      +(d.add?`<input class="new" name="${d.k}__new" placeholder="一覧にない場合は、ここに名前を入力">`:'');
+  }
+  if(t==='multi'){
+    const list=pkList();
+    if(!list.length)return lab+`<div class="warn">作付がまだありません。「台帳」で圃場・品目・作付を登録してください。</div>`;
+    formCtx.pk=(v||[]).slice();formCtx.pkAll=false;formCtx.pkQ='';
+    return `<div id="pkwrap" data-k="${d.k}">${pkHtml()}</div>`;
+  }
+  if(t==='photos')return `<div class="ph" id="phbox">${phBox()}</div><div class="row"><label class="btn">撮影する<input type="file" accept="image/*" capture="environment" data-photo hidden></label><label class="btn">写真を選ぶ<input type="file" accept="image/*" multiple data-photo hidden></label></div>`;
+  if(t==='famic')return famicBox();
+  if(t==='std')return `<div id="stdbox"></div><datalist id="tglist"></datalist>`;
+  if(t==='phi')return `<div id="phibox"></div>`;
+  return lab+`<input id="${id}" name="${d.k}" type="${t}" ${t==='number'?'step="any" inputmode="decimal"':''} ${d.list?`list="${d.list}" autocomplete="off"`:''} value="${esc(v)}">`;
+}
+let formCtx=null;
+/* 作付の候補：最近記録した作付を先頭に */
+function pkList(){const lu={};live('records').forEach(r=>{const t=(r.date||'')+(r.updatedAt||'');if(!lu[r.plantingId]||lu[r.plantingId]<t)lu[r.plantingId]=t});
+  return live('plantings').filter(x=>!x.done).sort((a,b)=>(lu[b.id]||'').localeCompare(lu[a.id]||'')||plantingLabel(a).localeCompare(plantingLabel(b),'ja'))}
+const PK_SHOW=5;
+const kana=t=>(t||'').replace(/[\u3041-\u3096]/g,ch=>String.fromCharCode(ch.charCodeAt(0)+0x60)).normalize('NFKC').toLowerCase();
+function pkHtml(){const c=formCtx,list=pkList();
+  return `<label>作付 <span style="color:var(--red)">必須</span>　<span id="pkcount">${pkCount()}</span></label>
+    ${list.length>PK_SHOW?`<div class="pkbar"><input type="search" data-pkq placeholder="絞り込み（圃場名・品目）" value="${esc(c.pkQ)}" autocomplete="off"></div>`:''}
+    <div id="pkchips">${pkChips()}</div>`}
+const pkCount=()=>formCtx.pk.length?`<b style="color:var(--ink)">${formCtx.pk.length}件選択中</b>`:'複数選べます';
+function pkChips(){
+  const c=formCtx,list=pkList(),q=kana(c.pkQ);
+  let shown=q?list.filter(x=>kana(plantingLabel(x)+' '+(x.varietyNote||'')).includes(q)):list;
+  const hidden=!q&&!c.pkAll&&shown.length>PK_SHOW?shown.length-PK_SHOW:0;
+  if(hidden){const top=shown.slice(0,PK_SHOW);shown=top.concat(shown.slice(PK_SHOW).filter(x=>c.pk.includes(x.id)))}
+  const chip=x=>{const f=byId('fields',x.fieldId),cr=byId('crops',x.cropId);
+    return `<button type="button" class="chip ${c.pk.includes(x.id)?'on':''}" data-act="pk" data-id="${x.id}" aria-pressed="${c.pk.includes(x.id)}">${esc(f?f.name:'圃場未設定')}<small>${esc([cr?cr.name+(cr.variety?'（'+cr.variety+'）':''):'',x.season].filter(Boolean).join(' '))}</small></button>`};
+  return `<div class="chips">${shown.map(chip).join('')||'<span class="mut">該当する作付がありません</span>'}</div>
+    ${hidden?`<button type="button" class="pkmore" data-act="pkAll">▼ ほか${hidden}件の作付を表示</button>`:(!q&&c.pkAll&&list.length>PK_SHOW?`<button type="button" class="pkmore" data-act="pkLess">▲ 表示を減らす</button>`:'')}`;
+}
+function pkRender(){const ch=$('#pkchips'),cn=$('#pkcount');if(ch)ch.innerHTML=pkChips();if(cn)cn.innerHTML=pkCount()}
+function phBox(){return (formCtx.photoIds||[]).map(id=>{const s=(formCtx.newPhotos[id]||{}).thumb||thumbs[id];
+  return `<div class="p"><button type="button" class="pv" data-act="viewPhoto" data-id="${id}">${s?`<img src="${s}" alt="写真">`:'写真'}</button><button type="button" class="x" data-act="rmPhoto" data-id="${id}" aria-label="写真を外す">×</button></div>`}).join('')}
+function formBody(defs,v){let h='',i=0;
+  while(i<defs.length){const d=defs[i];
+    if(d.row){let g='',rq=false;while(i<defs.length&&defs[i].row===d.row){const x=defs[i];if(x.req)rq=true;g+=`<div class="fc${x.s?' s':''}">${fieldHtml(x,v[x.k])}</div>`;i++}h+=`<div class="fd${rq?' req':''}"><div class="frow">${g}</div></div>`}
+    else{h+=`<div class="fd${d.req?' req':''}">${fieldHtml(d,v[d.k])}</div>`;i++}}
+  return `<p class="legend"><i></i>色の付いた欄は必須です</p>`+h}
+function openForm(o){
+  formCtx=o;const v=o.values||{};o.famic=o.famic||v.famic||null;o.photoIds=(v.photoIds||[]).slice();o.newPhotos={};
+  $('#modal').innerHTML=`<div class="sheet"><h2>${esc(o.title)}</h2><form id="frm" novalidate>${formBody(o.defs,v)}
+    <div class="acts"><div class="err" id="ferr"></div><button type="submit" class="pri">${o.submitLabel||'保存'}</button><button type="button" data-act="closeForm">戻る</button>
+    ${o.onDelete?'<button type="button" class="danger" data-act="delForm">削除</button>':''}</div></form></div>`;
+  $('#modal').hidden=false;updChecks();o.snap=formSnap();
+  try{if(history.state&&history.state.form)history.replaceState({form:1},'');else history.pushState({form:1},'')}catch(e){}
+}
+function formSnap(){const f=$('#frm');if(!f||!formCtx)return '';
+  return JSON.stringify([[...f.elements].filter(e=>/^(INPUT|SELECT|TEXTAREA)$/.test(e.tagName)&&e.type!=='file'&&!e.hasAttribute('data-pkq')).map(e=>e.type==='checkbox'?e.checked:e.value),formCtx.pk||[],formCtx.photoIds||[]])}
+const formDirty=()=>!!formCtx&&formSnap()!==formCtx.snap;
+function closeForm(keep){$('#modal').hidden=true;$('#modal').innerHTML='';formCtx=null;
+  if(!keep){try{if(history.state&&history.state.form)history.back()}catch(e){}}}
+function backWarn(){const b=document.querySelector('[data-act=closeForm]');if(b){b.dataset.sure='1';b.textContent='破棄して戻る'}
+  $('#ferr').textContent='入力した内容はまだ記録されていません。「破棄して戻る」を押すと、入力した内容は消えます。'}
+window.addEventListener('popstate',()=>{if(!formCtx)return;
+  if(formDirty()&&!formCtx.backWarned){formCtx.backWarned=true;try{history.pushState({form:1},'')}catch(e){}backWarn();return}
+  closeForm(true)});
+function collect(){
+  const f=$('#frm'),out={},miss=[],missEl=[];f.querySelectorAll('.miss').forEach(e=>e.classList.remove('miss'));
+  formCtx.defs.forEach(d=>{
+    const t=d.t||'text';let val;
+    if(t==='photos'){out[d.k]=formCtx.photoIds.slice();return}
+    if(t==='famic'||t==='std'||t==='phi')return;
+    if(t==='multi')val=(formCtx.pk||[]).slice();
+    else if(t==='check')val=f.elements[d.k].checked;
+    else if(t==='number'){const s=f.elements[d.k].value;val=s===''?'':Number(s)}
+    else val=f.elements[d.k].value.trim();
+    if(t==='ref'&&d.add){const nv=f.elements[d.k+'__new'].value.trim();
+      if(nv){const ex=live(d.ref).find(x=>x.name===nv);val=ex?ex.id:'__new__:'+nv}}
+    if(d.req&&(val===''||(Array.isArray(val)&&!val.length)||(typeof val==='number'&&isNaN(val)))){miss.push(d.l.replace(/（.*$/,''));missEl.push(t==='multi'?$('#pkwrap'):f.elements[d.k])}
+    out[d.k]=val;
+  });
+  if(miss.length){$('#ferr').textContent='入力してください：'+miss.join('、');missEl.forEach(e=>e&&e.classList&&e.classList.add('miss'));
+    const e0=missEl.find(e=>e&&e.scrollIntoView);if(e0)e0.scrollIntoView({block:'center',behavior:'smooth'});return null}
+  formCtx.defs.forEach(d=>{const val=out[d.k];if(typeof val==='string'&&val.startsWith('__new__:'))out[d.k]=upsert(d.ref,{name:val.slice(8)}).id});
+  return out;
+}
+
+/* ---------- 記録 ---------- */
+function recordForm(type,rec,dup){
+  const isNew=!rec||dup,last=db.meta.last||{};
+  const base=rec?Object.assign({},rec):{date:today(),workerId:last.workerId||'',machineId:last.machineId||'',unit:(last.unit||{})[type]||''};
+  if(dup){delete base.id;base.date=today();base.plantingIds=[rec.plantingId];base.photoIds=[]}
+  else if(!rec&&sub.planting)base.plantingIds=[sub.planting];
+  const defs=[{k:'date',l:'日付',t:'date',req:1},
+    isNew?{k:'plantingIds',l:'作付',t:'multi',ref:'plantings',req:1}:{k:'plantingId',l:'作付',t:'ref',ref:'plantings',active:1,req:1}]
+    .concat(RT[type].defs,[{k:'workerId',l:'作業者',t:'ref',ref:'workers',add:1},{k:'memo',l:'メモ',t:'textarea'},{k:'photoIds',l:'写真',t:'photos'}]);
+  openForm({title:RT[type].label+(isNew?'を記録':'の修正'),defs,values:base,submitLabel:'記録する',type,recId:isNew?null:rec.id,useSel:base.use||'',
+    onSave:(v,c)=>{
+      if(type==='pesticide')v.use=c.useSel||'';
+      const ids=isNew?v.plantingIds:[v.plantingId];delete v.plantingIds;
+      ids.forEach(pid=>{const r=Object.assign({},isNew?{}:rec,v,{type,plantingId:pid});
+        if(type==='harvest'){const p=byId('plantings',pid),f=p&&byId('fields',p.fieldId);r.lot=(v.date||'').replace(/-/g,'')+'-'+(f?f.name:'')}
+        upsert('records',r)});
+      db.meta.last=Object.assign({},last,{workerId:v.workerId||last.workerId||'',machineId:v.machineId||last.machineId||'',unit:Object.assign({},last.unit,v.unit?{[type]:v.unit}:{})});
+      toast(ids.length>1?ids.length+'件を記録しました':'記録しました');
+    },
+    onDelete:isNew?null:()=>removeItem('records',rec.id)});
+}
+function recItem(r,showP){
+  const t=RT[r.type]||{label:r.type,tag:''};
+  return `<button class="item" data-act="editRec" data-id="${r.id}"><div class="t"><span class="tag ${t.tag}">${t.label}</span>${esc(r.date)}</div>
+    <div>${esc(recSummary(r))}</div>${showP?`<div class="s">${esc(plantingLabel(byId('plantings',r.plantingId)))}</div>`:''}
+    ${r.memo?`<div class="s">${esc(r.memo)}</div>`:''}${(r.photoIds||[]).length?`<div class="th">${r.photoIds.slice(0,3).map(id=>thumbs[id]?`<span><img src="${thumbs[id]}" alt=""></span>`:'').join('')}<span class="mut" style="width:auto;height:auto">写真${r.photoIds.length}枚</span></div>`:''}</button>`;
+}
+
+/* ---------- 農薬登録情報（FAMIC）と使用基準の確認 ---------- */
+const FAMIC_DIR='data/famic/';
+const FAMIC_NOTE1='本アプリで提供する農薬の情報は、独立行政法人農林水産消費安全技術センター（FAMIC）が公表する『農薬登録情報ダウンロード』から取得したデータを本サイト（soranoiro.net）が複製・加工したものです。提供情報については正確性を期すように努力しておりますが、その正確性、完全性が保証されているものではありません。実際に農薬を使用する際は、必ず製品ラベルにより登録内容をご確認ください。';
+const FAMIC_NOTE2='本情報の利用により直接又は間接的に生じた利用者又はそれ以外の第三者の損害について、独立行政法人農林水産消費安全技術センターはその内容、方法の如何にかかわらず、一切責任を負いません。';
+const famicNotes=()=>`<div class="fnote"><p>${FAMIC_NOTE1}</p><p>${FAMIC_NOTE2}</p></div>`;
+let famicIdx=null,famicIdxP=null;
+function famicIndex(){if(famicIdx)return Promise.resolve(famicIdx);
+  if(!famicIdxP)famicIdxP=fetch(FAMIC_DIR+'index.json',{cache:'no-cache'}).then(r=>{if(!r.ok)throw new Error('HTTP '+r.status);return r.json()})
+    .then(j=>{j.items.forEach(x=>{x.key=cmKey(x[1]+' '+x[2])});famicIdx=j;return j}).catch(e=>{famicIdxP=null;throw e});
+  return famicIdxP}
+async function famicReg(no){const r=await fetch(FAMIC_DIR+'r/'+no+'.json',{cache:'no-cache'});if(r.status===404)return null;if(!r.ok)throw new Error('HTTP '+r.status);return r.json()}
+const famicFail='登録情報を読み込めませんでした。公開アドレス（https://…）で開き、通信できる状態で試してください。';
+function famicBox(){return `<div class="fsearch"><label>登録情報から探す（農薬名・登録番号）</label>
+  <input type="search" data-fq autocomplete="off" placeholder="例：ダコニール、21220"><div class="fres" id="fres"></div><div id="fsel">${famicSel()}</div>
+  <details class="fnote"><summary>農薬の情報の出典と注意</summary>${famicNotes()}</details></div>`}
+function famicSel(){const d=formCtx&&formCtx.famic;if(!d)return '';
+  return `<div class="okmsg">登録情報：${esc(d.name)}（登録番号${d.regNo}、${esc(d.asOf)}反映）<br>${esc(d.ing.map(x=>x[0]+' '+x[2]).join('、'))}
+    <br><button type="button" class="sm" data-act="fcheck">登録内容を確認</button><span id="fchk"></span></div>`}
+let fqTimer;
+function famicSearch(q){const box=$('#fres');if(!box)return;q=q.trim();if(!q){box.innerHTML='';return}
+  famicIndex().then(j=>{const k=cmKey(q),isNo=/^\d+$/.test(q);
+    const hit=j.items.filter(x=>isNo?String(x[0]).startsWith(q):x.key.includes(k)).slice(0,20);
+    box.innerHTML=hit.length?hit.map(x=>`<button type="button" class="item" data-act="fpick" data-no="${x[0]}"><div class="t">${esc(x[1])}</div><div class="s">登録番号${x[0]}　${esc(x[2])}　${esc(x[3])}</div></button>`).join('')
+      +(hit.length===20?'<p class="mut">20件まで表示しています。名前を詳しく入れて絞り込んでください。</p>':''):'<p class="mut">見つかりません。名前の一部か登録番号で探してください。</p>'})
+   .catch(()=>{box.innerHTML=`<div class="warn">${famicFail}</div>`})}
+const phiDays=t=>{t=t||'';const m=t.match(/収穫(\d+)日前まで/);if(m)return +m[1];if(/収穫前日まで/.test(t))return 1;return null};
+const timesN=t=>{const m=(t||'').match(/(\d+)回/);return m?+m[1]:null};
+const dilRange=t=>{const m=(t||'').match(/^(\d+)(?:~(\d+))?倍$/);return m?[+m[1],+(m[2]||m[1])]:null};
+const addDays=(d,n)=>{const x=new Date(d+'T00:00:00');x.setDate(x.getDate()+n);return x.getFullYear()+'-'+pad(x.getMonth()+1)+'-'+pad(x.getDate())};
+const fmtMD=d=>d?(+d.slice(5,7))+'/'+(+d.slice(8,10)):'';
+const timesTxt=n=>n+'回'+(n>1?'以内':'');
+function plantingItem(p){const c=p&&byId('crops',p.cropId);return c?cmItemFor(c.name):null}
+function pestRows(pest,p){if(!pest||!pest.famic||!p)return null;const it=plantingItem(p);return it?cmRows(it,pest.famic.rows||[]):null}
+const useKey=r=>[r.dil||'',r.method||'',r.timing||'',r.times||''].join('|');
+const useLabel=r=>[r.dil,r.method,r.timing].filter(Boolean).join('・')+(r.times?`（${r.times}）`:'');
+/* 記録で選んだ「登録の使い方」と対象病害虫で行を絞る */
+function pickRows(rows,use,target){let c=rows;if(use){const u=c.filter(x=>useKey(x.r)===use);if(u.length)c=u}
+  if(target){const t=cmKey(target),u=c.filter(x=>(x.r.target||'').split('、').some(s=>cmKey(s)===t));if(u.length)c=u}return c}
+function rowFor(rows,target){if(!target||!rows)return null;const t=cmKey(target);return rows.find(x=>(x.r.target||'').split('、').some(s=>cmKey(s)===t))||null}
+const ingTotals=pest=>!pest?[]:pest.famic?pest.famic.ing.map(x=>x[1]||x[0]):(pest.ingredient||'').split(/[、,]/).map(s=>s.trim()).filter(Boolean);
+/* 1つの作付について、農薬使用を使用基準と照らす（判定は入力の補助） */
+function pestCheck(pid,pestId,date,dil,target,exceptId,use){
+  const p=byId('plantings',pid),pest=byId('pesticides',pestId),out={warn:[],info:[],crops:''};
+  if(!p||!pest)return out;
+  if(!pest.famic){out.info.push('この農薬は登録情報と結びついていないため、使用基準を確認できません。台帳の農薬で「登録情報から探す」を使うと確認できます。');return out}
+  const it=plantingItem(p),rows=pestRows(pest,p)||[];
+  if(!rows.length){out.warn.push(`「${it?it.name:'この品目'}」への適用が見つかりません。ラベルで適用作物を確認してください。`+(it&&it.custom?'（対応表にない品目のため、同じ作物名の登録だけを照合しています）':''));return out}
+  out.crops=[...new Set(rows.map(x=>x.r.crop+(x.m.kind==='group'?'（作物群）':'')))].slice(0,4).join('、');
+  const cand=pickRows(rows,use,target),multi=new Set(cand.map(x=>useKey(x.r))).size>1;
+  if(dil!==''&&dil!=null&&!isNaN(dil)){const rs=cand.map(x=>dilRange(x.r.dil)).filter(Boolean);
+    if(rs.length&&!rs.some(([a,b])=>dil>=a&&dil<=b))out.warn.push(`希釈倍数${dil}倍は、登録の範囲（${[...new Set(cand.map(x=>x.r.dil).filter(Boolean))].join('、')}）に入っていません。`)}
+  const recs=live('records').filter(r=>r.type==='pesticide'&&r.plantingId===pid&&r.id!==exceptId);
+  /* 使い方を選んでいれば、同じ使い方（使い方が未記入の記録を含む）の回数を数える */
+  const same=recs.filter(r=>{const q=byId('pesticides',r.itemId);return (r.itemId===pestId||(q&&q.famic&&q.famic.regNo===pest.famic.regNo))&&(!use||!r.use||r.use===use)}).length+1;
+  /* 回数は最も厳しい行で判定し、登録の文言（条件つきの場合を含む）をそのまま示す */
+  const strict=get=>{let best=null;cand.forEach(x=>{const t=get(x),n=timesN(t);if(n!=null&&(!best||n<best.n))best={n,t}});return best};
+  /* 使い方が1つに決まらないときは、回数の上限を判定せず、選ぶよう促す */
+  const lim=strict(x=>x.r.times);
+  if(lim)(same>lim.n&&!multi?out.warn:out.info).push(`この農薬は${use&&!multi?'この使い方で':''}今回で${same}回目（本剤の使用回数：${multi?'使い方により異なる':lim.t}）`);
+  ingTotals(pest).forEach((ing,i)=>{const n=recs.filter(r=>ingTotals(byId('pesticides',r.itemId)).includes(ing)).length+1;
+    const l=strict(x=>(x.r.total||[])[i]);
+    if(l)(n>l.n&&!multi?out.warn:out.info).push(`${ing}を含む農薬は今回で${n}回目（総使用回数：${l.t}）`)});
+  const ds=cand.map(x=>phiDays(x.r.timing)).filter(v=>v!=null);
+  if(ds.length&&date){const d=Math.max(...ds);out.info.push(`収穫できるのは${fmtMD(addDays(date,d))}から（収穫${d===1?'前日':d+'日前'}まで）`);
+    const h=live('records').filter(r=>r.type==='harvest'&&r.plantingId===pid&&r.date&&r.date>=date&&r.date<addDays(date,d));
+    if(h.length)out.warn.push(`${fmtMD(h[0].date)}の収穫記録が、この使用時期の基準に合いません。`)}
+  else{const tm=[...new Set(cand.map(x=>x.r.timing).filter(Boolean))];if(tm.length)out.info.push('使用時期：'+tm.slice(0,3).join('／'))}
+  if(multi)out.info.push('使い方によって基準が違います。上の「登録の使い方」を選ぶと、回数の上限まで判定します（収穫できる日は、選ぶまで最も厳しい基準で示しています）。');
+  out.uses=rows;return out}
+/* 収穫日から見た、農薬の使用時期の確認 */
+function harvestCheck(pid,hdate){const out={warn:[],info:[]};if(!hdate)return out;let nof=0,cnt=0;
+  live('records').filter(r=>r.type==='pesticide'&&r.plantingId===pid&&r.date&&r.date<=hdate).forEach(r=>{
+    const pest=byId('pesticides',r.itemId);if(!pest||!pest.famic){nof++;return}
+    const rows=pestRows(pest,byId('plantings',pid))||[];const cand=pickRows(rows,r.use,r.target);
+    const ds=cand.map(x=>phiDays(x.r.timing)).filter(v=>v!=null);if(!ds.length)return;cnt++;
+    const d=Math.max(...ds),ok=addDays(r.date,d);
+    if(hdate<ok)out.warn.push(`${pest.name}（${fmtMD(r.date)}使用、収穫${d===1?'前日':d+'日前'}まで）：収穫できるのは${fmtMD(ok)}からです。`)});
+  if(cnt&&!out.warn.length)out.info.push('農薬の使用時期の基準に合っています。');
+  if(nof)out.info.push(`登録情報と結びついていない農薬の記録${nof}件は判定していません。`);
+  return out}
+function harvestReady(pid){let best=null;
+  live('records').filter(r=>r.type==='pesticide'&&r.plantingId===pid&&r.date).forEach(r=>{const pest=byId('pesticides',r.itemId);if(!pest||!pest.famic)return;
+    const rows=pestRows(pest,byId('plantings',pid))||[];const cand=pickRows(rows,r.use,r.target);
+    const ds=cand.map(x=>phiDays(x.r.timing)).filter(v=>v!=null);if(!ds.length)return;const ok=addDays(r.date,Math.max(...ds));
+    if(!best||ok>best.date)best={date:ok,name:pest.name}});return best}
+const selPids=()=>{if($('#pkwrap'))return (formCtx.pk||[]).slice();const s=$('#frm')&&$('#frm').elements.plantingId;return s&&s.value?[s.value]:[]};
+const chkHtml=(pid,c)=>`<div class="std ${c.warn.length?'ng':''}"><b>${esc(plantingLabel(byId('plantings',pid)))}</b>${c.crops?`<div class="cr">登録上の作物名：${esc(c.crops)}</div>`:''}
+  <ul>${c.warn.map(x=>`<li class="w">${esc(x)}</li>`).join('')}${c.info.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>`;
+function updChecks(){if(!formCtx)return;const f=$('#frm');if(!f)return;
+  if(formCtx.type==='pesticide'){const b=$('#stdbox');if(!b)return;const pestId=f.elements.itemId.value,pids=selPids();
+    if(!pestId||!pids.length){b.innerHTML=pestId?'<p class="mut">作付を選ぶと、使用基準を確認します。</p>':'';return}
+    const dilS=f.elements.dilution.value,target=f.elements.target.value.trim(),date=f.elements.date.value;
+    const pest0=byId('pesticides',pestId),uses=new Map();
+    pids.forEach(pid=>(pestRows(pest0,byId('plantings',pid))||[]).forEach(x=>{const k=useKey(x.r);if(!uses.has(k))uses.set(k,useLabel(x.r))}));
+    if(formCtx.useSel&&!uses.has(formCtx.useSel))formCtx.useSel='';
+    if(uses.size===1)formCtx.useSel=[...uses.keys()][0];
+    const sel=uses.size>1?`<label>登録の使い方（希釈倍数・使用方法・使用時期）</label><select data-use><option value="">（選ぶと回数まで判定します）</option>${[...uses].map(([k,l])=>`<option value="${esc(k)}" ${k===formCtx.useSel?'selected':''}>${esc(l)}</option>`).join('')}</select>`:'';
+    b.innerHTML=sel+pids.map(pid=>chkHtml(pid,pestCheck(pid,pestId,date,dilS===''?'':+dilS,target,formCtx.recId,formCtx.useSel))).join('')
+      +'<p class="fnote">判定は入力の補助です。使用の際は必ずラベルで登録内容を確認してください。</p>';
+    const pest=byId('pesticides',pestId),tg=new Set();
+    pids.forEach(pid=>(pestRows(pest,byId('plantings',pid))||[]).forEach(x=>(x.r.target||'').split('、').forEach(t=>t&&tg.add(t))));
+    const dl=$('#tglist');if(dl)dl.innerHTML=[...tg].map(t=>`<option value="${esc(t)}">`).join('')}
+  if(formCtx.type==='harvest'){const b=$('#phibox');if(!b)return;const pids=selPids(),date=f.elements.date.value;
+    const res=pids.map(pid=>[pid,harvestCheck(pid,date)]).filter(([,c])=>c.warn.length||c.info.length);
+    b.innerHTML=res.map(([pid,c])=>chkHtml(pid,c)).join('')}}
+async function famicCheckAll(){const list=live('pesticides').filter(x=>x.famic);if(!list.length){importMsg={text:'登録情報と結びついた農薬が台帳にありません。'};render();return}
+  const msgs=[];let ch=0;
+  for(const x of list){try{const d=await famicReg(x.famic.regNo);
+      if(!d){msgs.push(`${x.name}：現在の登録情報に見つかりません（失効の可能性があります）`);continue}
+      if(JSON.stringify([d.rows,d.ing])!==JSON.stringify([x.famic.rows,x.famic.ing])){x.famic=d;x.updatedAt=new Date().toISOString();ch++;msgs.push(`${x.name}：登録内容が変わっていたため、最新の内容（${d.asOf}反映）に更新しました`)}
+      else if(d.asOf!==x.famic.asOf){x.famic.asOf=d.asOf}}
+    catch(e){importMsg={ng:1,text:famicFail};render();return}}
+  await save();importMsg={ng:msgs.some(m=>m.includes('失効')),text:`台帳の農薬${list.length}件の登録内容を確認しました。`+(msgs.length?msgs.join('。')+'。':'変更はありませんでした。')};render()}
+
+/* ---------- 画面 ---------- */
+const NAV=[['home','ホーム'],['records','記録'],['plantings','作付'],['master','台帳'],['data','データ']];
+function backupWarn(){
+  const n=live('records').length,le=db.meta.lastExport;
+  if(storeMode==='mem')return '<div class="warn">この画面では端末内に保存できません。閉じる前に「データ」から書き出してください。</div>';
+  if(n&&(!le||Date.now()-new Date(le).getTime()>30*864e5))return `<div class="warn">${le?'最後の書き出しから30日以上たっています。':'まだ一度もデータを書き出していません。'}「データ」からバックアップを書き出してください。</div>`;
+  return '';
+}
+const addBtns=()=>`<div class="row">${Object.keys(RT).map(k=>`<button class="pri big" data-act="newRec" data-type="${k}">＋ ${RT[k].label}</button>`).join('')}</div>`;
+function vHome(){
+  const recs=sortedRecs().slice(0,8);
+  return (db.meta.farmName?`<p class="mut">${esc(db.meta.farmName)}</p>`:'')+backupWarn()+`<h2>記録する</h2>`+addBtns()
+    +(live('plantings').length?'':'<div class="warn">最初に「台帳」で圃場・品目・作付を登録してください。農薬・肥料・作業者は、記録の入力中に追加できます。</div>')
+    +`<h2>最近の記録</h2>`+(recs.length?recs.map(r=>recItem(r,true)).join(''):'<p class="mut">記録はまだありません。</p>');
+}
+function vRecords(){
+  let recs=sortedRecs();if(sub.type)recs=recs.filter(r=>r.type===sub.type);if(sub.planting)recs=recs.filter(r=>r.plantingId===sub.planting);
+  return `<h2>記録の一覧</h2><div class="row"><select data-chg="type"><option value="">すべての種類</option>${Object.keys(RT).map(k=>`<option value="${k}" ${sub.type===k?'selected':''}>${RT[k].label}</option>`).join('')}</select>
+    <select data-chg="planting"><option value="">すべての作付</option>${live('plantings').map(p=>`<option value="${p.id}" ${sub.planting===p.id?'selected':''}>${esc(plantingLabel(p))}</option>`).join('')}</select></div>
+    <p class="mut">${recs.length}件。押すと修正・複製・削除ができます。</p>`+recs.map(r=>recItem(r,true)).join('');
+}
+function vPlantings(){
+  const ps=live('plantings');if(!ps.length)return '<h2>作付</h2><div class="warn">作付がまだありません。「台帳」で登録してください。</div>';
+  if(!sub.planting||!ps.find(p=>p.id===sub.planting))sub.planting=(ps.find(p=>!p.done)||ps[0]).id;
+  const p=byId('plantings',sub.planting),recs=sortedRecs().filter(r=>r.plantingId===p.id);
+  const hv={},pc={};
+  recs.forEach(r=>{if(r.type==='harvest'&&typeof r.amount==='number')hv[r.unit||'']=(hv[r.unit||'']||0)+r.amount;if(r.type==='pesticide')pc[r.itemId]=(pc[r.itemId]||0)+1});
+  const hvs=Object.keys(hv).map(u=>Math.round(hv[u]*100)/100+u).join('、');
+  return `<h2>作付ごとの記録</h2><select data-chg="planting">${ps.map(x=>`<option value="${x.id}" ${x.id===p.id?'selected':''}>${esc(plantingLabel(x))}${x.done?'（終了）':''}</option>`).join('')}</select>
+    <div class="card"><div class="mut">${esc([p.varietyNote?'メモ：'+p.varietyNote:'',p.type,p.area!==''&&p.area!=null?p.area+'a':'',p.start?'開始 '+p.start:'',p.harvestPlan?'収穫予定 '+p.harvestPlan:''].filter(Boolean).join('　'))||'　'}</div>
+    ${(()=>{const hr=harvestReady(p.id);return hr&&hr.date>today()?`<div class="warn">農薬の使用時期から、収穫できるのは${fmtMD(hr.date)}からです（${esc(hr.name)}）。</div>`:''})()}
+    <table><tr><th>収穫量の合計</th><td class="n">${esc(hvs)||'―'}</td></tr>
+    ${Object.keys(pc).map(id=>`<tr><th>${esc(refLabel('pesticides',byId('pesticides',id)))}</th><td class="n">${pc[id]}回</td></tr>`).join('')}</table></div>`
+    +addBtns()+`<h3>作業の履歴（新しい順）</h3>`+(recs.length?recs.map(r=>recItem(r,false)).join(''):'<p class="mut">この作付の記録はまだありません。</p>');
+}
+function vMaster(){
+  const k=sub.master,m=MASTERS[k],list=live(k);
+  return `<h2>台帳</h2><label>農場名</label><input data-chg="farm" value="${esc(db.meta.farmName)}" placeholder="農場名・生産者名">
+    <div class="tabs" style="margin-top:12px">${Object.keys(MASTERS).map(x=>`<button class="tab ${x===k?'on':''}" data-act="masterTab" data-k="${x}">${MASTERS[x].label}（${live(x).length}）</button>`).join('')}</div>
+    <div style="margin:10px 0"><button class="pri" data-act="newMaster">＋ ${m.label}を追加</button></div>`
+    +(list.length?list.map(x=>`<button class="item" data-act="editMaster" data-id="${x.id}"><div class="t">${esc(refLabel(k,x))}</div><div class="s">${esc(m.sub(x))}</div></button>`).join(''):`<p class="mut">${m.label}はまだ登録されていません。</p>`);
+}
+let importMsg=null,shareFile=null,dbVer=0;
+function vData(){
+  const mode={idb:'この端末のブラウザ内（IndexedDB）',ls:'この端末のブラウザ内（localStorage）',mem:'保存されません（この画面を閉じると消えます）'}[storeMode];
+  const im=importMsg?`<div class="${importMsg.ng?'warn':'okmsg'}">${esc(importMsg.text)}</div>`:'';
+  const proto=location.protocol==='https:'||location.hostname==='localhost'?'':`<div class="warn">このページは端末内のファイルとして開かれています（${esc(location.protocol)}）。この開き方では、データが保存されなかったり、開くたびに別のデータになったりすることがあります。公開アドレス（https://…）から開いてください。</div>`;
+  return `<h2>データ</h2>`+im+proto+backupWarn()+`<div class="card"><table>
+    <tr><th>保存先</th><td>${mode}</td></tr><tr><th>記録</th><td>${live('records').length}件</td></tr><tr><th>作付</th><td>${live('plantings').length}件</td></tr>
+    <tr><th>写真</th><td>${usedPhotoIds().length}枚${storeMode==='idb'?'':'（この画面では写真は保存されません）'}</td></tr>
+    <tr><th>最後の書き出し</th><td>${db.meta.lastExport?esc(db.meta.lastExport.slice(0,10)):'なし'}</td></tr></table></div>
+    <h3>農薬の登録情報</h3><p class="mut">台帳の農薬のうち、登録情報と結びついているもの：${live('pesticides').filter(x=>x.famic).length}件</p>
+    <button data-act="checkAll" style="width:100%">台帳の農薬の登録内容をまとめて確認する</button>${famicNotes()}
+    <h3>バックアップ・機種変更（この端末に保存）</h3><label class="chk"><input type="checkbox" id="withPhotos" checked>写真を含める（ファイルが大きくなります）</label>
+    <button class="pri" data-act="exportJson" style="width:100%">データファイルを書き出す</button>
+    ${navigator.share?`<h3>ほかの人・端末に送る（LINE・メール）</h3><label class="chk"><input type="checkbox" id="sharePhotos">写真を含める（通常は含めずに送ります）</label>
+    <button data-act="shareJson" style="width:100%">共有する</button>
+    <p class="mut">受け取った人には、ファイルを開かずに、栽培ノートの「データファイルを読み込む」から読み込むよう伝えてください。開いて文字を書き換えると読み込めなくなります。</p>`:''}
+    <div style="margin-top:8px"><label>データファイルを読み込む（今のデータと統合します）</label><input type="file" id="imp"></div>
+    <h3>表計算用</h3><button data-act="exportCsv">記録の一覧をCSVで書き出す</button>
+    <p class="mut" style="margin-top:16px">記録はこの端末の中だけに保存され、外部には送信されません。書き出したファイルを保管しておくと、端末の故障や機種変更のときに元に戻せます。</p>`;
+}
+function render(){
+  $('#app').innerHTML=({home:vHome,records:vRecords,plantings:vPlantings,master:vMaster,data:vData}[view])();
+  $('#nav').innerHTML=NAV.map(n=>`<button class="${view===n[0]?'on':''}" data-act="nav" data-v="${n[0]}">${n[1]}</button>`).join('');
+}
+let toastT;function toast(m){const t=$('#toast');t.textContent=m;t.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>t.hidden=true,3200)}
+
+/* ---------- 書き出し・読み込み ---------- */
+const stamp=()=>today().replace(/-/g,'');
+function download(name,text,type){const u=URL.createObjectURL(new Blob([text],{type}));const a=document.createElement('a');a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),3000)}
+async function exportText(withPhotos){db.meta.lastExport=new Date().toISOString();const out=Object.assign({},db);
+  if(withPhotos){const ps=[];for(const id of usedPhotoIds()){const p=await photoGet(id).catch(()=>null);if(p)ps.push(p)}out.photos=ps}
+  return JSON.stringify(out)}
+function merge(inc){let add=0,upd=0;
+  COLS.forEach(c=>(inc[c]||[]).forEach(x=>{if(!x||!x.id)return;const i=db[c].findIndex(y=>y.id===x.id);
+    if(i<0){db[c].push(x);add++}else if((x.updatedAt||'')>(db[c][i].updatedAt||'')){db[c][i]=x;upd++}}));
+  if(!db.meta.farmName&&inc.meta&&inc.meta.farmName)db.meta.farmName=inc.meta.farmName;return{add,upd}}
+function csvText(){
+  const head=['日付','種類','作業','作業時間(h)','人数','圃場','品目','品種','作期','作付メモ','栽培区分','資材名','登録番号','有効成分','希釈倍数','散布液量(L/10a)','数量','単位','施用面積(a)','対象病害虫・雑草','方法','機械','天候','風','散布終了時刻','登録の使い方','収穫ロット','作業者','メモ','写真枚数'];
+  const q=v=>{v=v==null?'':String(v);return /[",\r\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v};
+  const rows=sortedRecs().reverse().map(r=>{const p=byId('plantings',r.plantingId)||{},f=byId('fields',p.fieldId)||{},c=byId('crops',p.cropId)||{},it=(itemCol(r.type)&&byId(itemCol(r.type),r.itemId))||{};
+    return [r.date,(RT[r.type]||{}).label,r.type==='work'?it.name:'',r.hours,r.people,f.name,c.name,c.variety,p.season,p.varietyNote,p.type,r.type==='work'?'':it.name,it.regNo,it.ingredient,r.dilution,r.sprayVol,r.amount,r.type==='pesticide'?'':r.unit,r.area,r.target,r.method,
+      (byId('machines',r.machineId)||{}).name,r.weather,r.wind,r.endTime,r.use?r.use.split('|').filter(Boolean).join('・'):'',r.lot,(byId('workers',r.workerId)||{}).name,r.memo,(r.photoIds||[]).length||''].map(q).join(',')});
+  return '﻿'+[head.join(',')].concat(rows).join('\r\n');
+}
+
+/* ---------- 操作 ---------- */
+const ACT={
+  nav:e=>{view=e.dataset.v;if(view==='records')sub.planting='';render();window.scrollTo(0,0)},
+  newRec:e=>recordForm(e.dataset.type),
+  editRec:e=>{const r=byId('records',e.dataset.id);if(!r)return;recordForm(r.type,r);
+    $('#frm .acts').insertAdjacentHTML('beforeend',`<button type="button" data-act="dupRec" data-id="${r.id}">複製して新しく記録</button>`)},
+  dupRec:e=>{const r=byId('records',e.dataset.id);closeForm(true);recordForm(r.type,r,true)},
+  masterTab:e=>{sub.master=e.dataset.k;render()},
+  newMaster:()=>{const k=sub.master;openForm({title:MASTERS[k].label+'を追加',defs:MASTERS[k].defs,values:{},onSave:(v,c)=>{if(c.famic)v.famic=c.famic;upsert(k,v)}})},
+  editMaster:e=>{const k=sub.master,x=byId(k,e.dataset.id);openForm({title:MASTERS[k].label+'の修正',defs:MASTERS[k].defs,values:x,onSave:(v,c)=>{if(c.famic)v.famic=c.famic;upsert(k,Object.assign({},x,v))},onDelete:()=>removeItem(k,x.id)})},
+  closeForm:e=>{if(formDirty()&&e.dataset.sure!=='1'){backWarn();return}closeForm()},
+  fpick:async e=>{const ctx=formCtx,no=e.dataset.no;$('#fres').innerHTML='<p class="mut">読み込み中…</p>';
+    try{const d=await famicReg(no);if(formCtx!==ctx)return;if(!d){$('#fres').innerHTML='<p class="mut">この登録番号の情報がありません。</p>';return}
+      ctx.famic=d;const f=$('#frm');f.elements.name.value=d.name;f.elements.regNo.value=d.regNo;f.elements.ingredient.value=d.ing.map(x=>x[0]).join('、');
+      $('#fres').innerHTML='';const q=document.querySelector('[data-fq]');if(q)q.value='';$('#fsel').innerHTML=famicSel()}
+    catch(err){$('#fres').innerHTML=`<div class="warn">${famicFail}</div>`}},
+  fcheck:async e=>{const ctx=formCtx,out=$('#fchk');out.textContent='　確認中…';
+    try{const d=await famicReg(ctx.famic.regNo);if(formCtx!==ctx)return;
+      if(!d){out.innerHTML='<br><b style="color:var(--red)">現在の登録情報に見つかりません（失効の可能性があります）。ラベルと農林水産省の情報で確認してください。</b>';return}
+      if(JSON.stringify([d.rows,d.ing])===JSON.stringify([ctx.famic.rows,ctx.famic.ing])){out.textContent=`　変更はありません（${d.asOf}反映）`;ctx.famic.asOf=d.asOf;return}
+      ctx.famic=d;$('#fsel').innerHTML=famicSel();$('#fchk').innerHTML='<br><b>登録内容が変わっていたため、最新の内容に置き換えました。「保存」で台帳に反映します。</b>'}
+    catch(err){out.innerHTML='<br>'+famicFail}},
+  checkAll:async e=>{e.textContent='確認中…';await famicCheckAll()},
+  pk:e=>{const c=formCtx,id=e.dataset.id;c.pk=c.pk.includes(id)?c.pk.filter(x=>x!==id):c.pk.concat(id);
+    const w=$('#pkwrap');if(w)w.classList.remove('miss');pkRender();updChecks()},
+  pkAll:()=>{formCtx.pkAll=true;pkRender()},
+  pkLess:()=>{formCtx.pkAll=false;pkRender()},
+  rmPhoto:e=>{formCtx.photoIds=formCtx.photoIds.filter(x=>x!==e.dataset.id);$('#phbox').innerHTML=phBox()},
+  viewPhoto:async e=>{const id=e.dataset.id;const p=(formCtx&&formCtx.newPhotos[id])||await photoGet(id).catch(()=>null);
+    const v=$('#viewer');v.innerHTML=p?`<img src="${p.data}" alt="写真">`:'<p style="color:#fff">写真を読み込めません</p>';v.hidden=false},
+  closeViewer:()=>{const v=$('#viewer');v.hidden=true;v.innerHTML=''},
+  delForm:async e=>{if(e.dataset.sure!=='1'){e.dataset.sure='1';e.textContent='もう一度押すと削除';return}
+    formCtx.onDelete();closeForm();await save();render();toast('削除しました')},
+  exportJson:async()=>{const w=$('#withPhotos');const t=await exportText(!w||w.checked);await save();download('栽培ノート_'+stamp()+'.json',t,'application/json');render();toast('データファイルを書き出しました')},
+  shareJson:async e=>{
+    /* 共有はボタンを押した直後でないと許可されないため、ファイルを先に用意し、2回目の押下で共有する */
+    const sp=$('#sharePhotos'),wp=!!(sp&&sp.checked);
+    const fresh=shareFile&&Date.now()-shareFile.at<120000&&shareFile.ver===dbVer&&shareFile.wp===wp;
+    if(!fresh){e.textContent='準備中…';const t=await exportText(wp);
+      shareFile={f:new File([t],'栽培ノート_'+stamp()+'.txt',{type:'text/plain'}),at:Date.now(),ver:dbVer,wp};}
+    const f=shareFile.f;
+    if(!(navigator.canShare&&navigator.canShare({files:[f]}))){toast('この端末ではファイルの共有に対応していません。「書き出す」を使ってください。');render();return}
+    try{await navigator.share({files:[f],title:'栽培ノートのデータ'});shareFile=null;await save();render();toast('共有しました')}
+    catch(err){if(err&&err.name==='AbortError'){render();return}
+      if(err&&err.name==='NotAllowedError'){e.textContent='もう一度押して共有';return}
+      toast('共有できませんでした（'+(err&&err.name||'エラー')+'）。「書き出す」を使ってください。');render()}},
+  exportCsv:()=>{download('栽培ノート一覧_'+stamp()+'.csv',csvText(),'text/csv');toast('CSVを書き出しました')}
+};
+document.addEventListener('input',e=>{const el=e.target;if(!el.hasAttribute)return;
+  if(el.hasAttribute('data-pkq')&&formCtx){formCtx.pkQ=el.value.trim();pkRender();return}
+  if(el.hasAttribute('data-fq')){clearTimeout(fqTimer);const q=el.value;fqTimer=setTimeout(()=>famicSearch(q),200);return}
+  if(el.hasAttribute('data-use')&&formCtx){formCtx.useSel=el.value;updChecks();return}
+  if(formCtx&&el.closest&&el.closest('#frm'))updChecks()});
+document.addEventListener('click',e=>{const el=e.target.closest('[data-act]');if(el&&ACT[el.dataset.act])ACT[el.dataset.act](el)});
+document.addEventListener('submit',async e=>{if(e.target.id!=='frm')return;e.preventDefault();const v=collect();if(!v)return;
+  const ctx=formCtx;for(const id of (v.photoIds||[])){const p=ctx.newPhotos[id];if(p){try{await photoPut(p)}catch(err){toast('写真の保存に失敗しました')}}}
+  ctx.onSave(v,ctx);closeForm();askPersist();await save();render()});
+document.addEventListener('change',async e=>{const el=e.target;
+  if(el.hasAttribute&&el.hasAttribute('data-photo')){const ctx=formCtx;if(!ctx)return;
+    for(const f of [...el.files]){try{const p=await makePhoto(f);ctx.newPhotos[p.id]=p;ctx.photoIds.push(p.id)}catch(err){toast('この画像は読み込めません')}}
+    el.value='';if(formCtx===ctx)$('#phbox').innerHTML=phBox();return}
+  if(el.id==='imp'&&el.files[0]){const file=el.files[0];let inc;
+    try{const tx=(await file.text()).replace(/^\ufeff/,'');inc=JSON.parse(tx);if(!inc||inc.app!=='seisan-kiroku')throw 0}
+    catch(err){importMsg={ng:1,text:'「'+file.name+'」は栽培ノートのデータファイルではないため、読み込めませんでした。'};render();return}
+    try{const before=live('records').length,r=merge(inc);let pa=0,pf=0;
+      if(Array.isArray(inc.photos))for(const p of inc.photos){if(p&&p.id&&p.data&&!thumbs[p.id]){try{await photoPut(p);pa++}catch(err){pf++}}}
+      await save();const fr=(inc.records||[]).filter(x=>x&&!x.deleted).length,after=live('records').length;
+      importMsg={text:`「${file.name}」を読み込みました。ファイル内の記録${fr}件のうち、新しく加わった記録は${after-before}件です（台帳なども含めた追加${r.add}件、更新${r.upd}件、写真${pa}枚）。`
+        +(r.add+r.upd+pa===0?'すべてこの端末にすでにある内容でした。同じ端末で書き出したファイルを読み込むと、このようになります。':'')+(pf?`写真${pf}枚は保存できませんでした。`:'')};
+      render();window.scrollTo(0,0)}
+    catch(err){importMsg={ng:1,text:'読み込み中にエラーが起きました（'+(err&&err.message||err)+'）。'};render()}
+    el.value='';return}
+  if(el.hasAttribute&&el.hasAttribute('data-use')&&formCtx){formCtx.useSel=el.value;updChecks();return}
+  if(formCtx&&el.closest&&el.closest('#frm')){updChecks();return}
+  const k=el.dataset&&el.dataset.chg;if(!k)return;
+  if(k==='farm'){db.meta.farmName=el.value.trim();await save();return}
+  sub[k]=el.value;render()});
+$('#modal').addEventListener('click',e=>{if(e.target.id==='modal')closeForm()});
+load().then(()=>{if(!db.meta.seededTasks){seedTasks();save()}render()});
+</script>
+</body>
+</html>
