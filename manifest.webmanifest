@@ -1,0 +1,15 @@
+{
+  "name": "栽培ノート",
+  "short_name": "栽培ノート",
+  "description": "青果・米の生産記録。記録は端末内にだけ保存します。",
+  "lang": "ja",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f6f8f5",
+  "theme_color": "#006e54",
+  "icons": [
+    {"src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable"},
+    {"src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable"}
+  ]
+}

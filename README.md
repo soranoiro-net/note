@@ -4,6 +4,8 @@
 
 ## ファイル
 - `index.html` … アプリ本体
+- `sw.js`・`manifest.webmanifest`・`icon-*.png`・`apple-touch-icon.png` … ホーム画面に追加して圏外でも使うためのファイル
+- `CNAME` … 公開アドレス（note.soranoiro.net）
 - `crop-match.js` … 品目と農薬登録上の作物名の対応表・照合
 - `data/famic/` … 農薬登録情報（FAMIC「農薬登録情報ダウンロード」を変換したもの）
 - `tools/famic_convert.py` … FAMICのCSVを `data/famic/` に変換

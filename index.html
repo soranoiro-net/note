@@ -3,6 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#006e54">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png">
 <title>栽培ノート（試作2）</title>
 <style>
 :root{--g:#006e54;--gt:#006e54;--g2:#e2f0eb;--ink:#1f2a22;--mut:#667066;--line:#d9e0d9;--bg:#f6f8f5;--warn:#b25a00;--warnbg:#fff4e2;--red:#b3261e}
@@ -113,7 +117,7 @@ const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;'
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,8);
 const pad=n=>String(n).padStart(2,'0');
 const today=()=>{const d=new Date();return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())};
-const COLS=['fields','crops','plantings','tasks','pesticides','fertilizers','machines','workers','records'];
+const COLS=['fields','crops','plantings','tasks','pesticides','fertilizers','machines','workers','records','stock'];
 const emptyDb=()=>{const d={app:'seisan-kiroku',version:1,meta:{farmName:'',lastExport:'',last:{}}};COLS.forEach(c=>d[c]=[]);return d};
 let db=emptyDb(),storeMode='mem',view='home',sub={master:'fields',type:'',planting:''};
 
@@ -182,11 +186,11 @@ const MASTERS={
 const RT={
   work:{label:'作業',tag:'w',defs:[
     {k:'itemId',l:'作業',t:'ref',ref:'tasks',add:1,req:1},
-    {k:'hours',l:'作業時間（時間）',t:'number',row:'w1'},
+    {k:'hours',l:'作業時間（時間）',t:'number',row:'w1',split:1},
     {k:'people',l:'人数',t:'number',row:'w1',s:1},
     {k:'machineId',l:'使用機械',t:'ref',ref:'machines',add:1}]},
   harvest:{label:'収穫',tag:'h',defs:[
-    {k:'amount',l:'収穫量',t:'number',req:1,row:'h1'},
+    {k:'amount',l:'収穫量',t:'number',req:1,row:'h1',split:1},
     {k:'unit',l:'単位',t:'select',opts:['kg','箱','袋','本','個','束','t'],row:'h1',s:1},
     {k:'_phi',t:'phi'}]},
   pesticide:{label:'農薬使用',tag:'',defs:[
@@ -194,6 +198,8 @@ const RT={
     {k:'_std',t:'std'},
     {k:'dilution',l:'希釈倍数（倍）',t:'number',row:'p1'},
     {k:'sprayVol',l:'散布液量 L/10a',t:'number',row:'p1'},
+    {k:'usedQty',l:'使った薬量（製品の量）',t:'number',row:'p3',split:1},
+    {k:'usedUnit',l:'単位',t:'select',opts:['mL','L','g','kg','袋','本'],row:'p3',s:1},
     {k:'amount',l:'使用量（10a当たり。希釈しない場合）'},
     {k:'target',l:'対象の病害虫・雑草',list:'tglist'},
     {k:'machineId',l:'防除機',t:'ref',ref:'machines',add:1},
@@ -202,7 +208,7 @@ const RT={
     {k:'endTime',l:'散布終了時刻',t:'time',row:'p2'}]},
   fertilizer:{label:'施肥',tag:'f',defs:[
     {k:'itemId',l:'肥料等',t:'ref',ref:'fertilizers',add:1,req:1},
-    {k:'amount',l:'施肥量',t:'number',req:1,row:'f1'},
+    {k:'amount',l:'施肥量',t:'number',req:1,row:'f1',split:1},
     {k:'unit',l:'単位',t:'select',opts:['kg','L','袋','t'],row:'f1',s:1},
     {k:'area',l:'施用面積 a',t:'number',row:'f1'},
     {k:'method',l:'施肥方法'},
@@ -211,7 +217,7 @@ const RT={
 const itemCol=t=>({pesticide:'pesticides',fertilizer:'fertilizers',work:'tasks'})[t]||null;
 function recSummary(r){
   const n=itemCol(r.type)?refLabel(itemCol(r.type),byId(itemCol(r.type),r.itemId)):'';
-  if(r.type==='pesticide')return [n,r.dilution!==''&&r.dilution!=null?r.dilution+'倍':'',r.sprayVol!==''&&r.sprayVol!=null?r.sprayVol+'L/10a':'',r.amount].filter(Boolean).join('　');
+  if(r.type==='pesticide')return [n,r.dilution!==''&&r.dilution!=null?r.dilution+'倍':'',r.sprayVol!==''&&r.sprayVol!=null?r.sprayVol+'L/10a':'',r.amount,r.usedQty!==''&&r.usedQty!=null?'薬量'+r.usedQty+(r.usedUnit||''):''].filter(Boolean).join('　');
   if(r.type==='work')return [n,r.hours!==''&&r.hours!=null?r.hours+'時間':'',r.people!==''&&r.people!=null?r.people+'人':''].filter(Boolean).join('　');
   if(r.type==='fertilizer')return [n,(r.amount!==''&&r.amount!=null?r.amount:'')+(r.unit||'')].filter(Boolean).join('　');
   return (r.amount!==''&&r.amount!=null?r.amount:'')+(r.unit||'')+(r.lot?'　ロット '+r.lot:'');
@@ -237,6 +243,8 @@ function fieldHtml(d,v){
     return `<div id="pkwrap" data-k="${d.k}">${pkHtml()}</div>`;
   }
   if(t==='photos')return `<div class="ph" id="phbox">${phBox()}</div><div class="row"><label class="btn">撮影する<input type="file" accept="image/*" capture="environment" data-photo hidden></label><label class="btn">写真を選ぶ<input type="file" accept="image/*" multiple data-photo hidden></label></div>`;
+  if(t==='mat'){const g=(c,l)=>{const xs=live(c);return xs.length?`<optgroup label="${l}">${xs.map(x=>`<option value="${c}:${x.id}" ${v===c+':'+x.id?'selected':''}>${esc(x.name)}</option>`).join('')}</optgroup>`:''};
+    return lab+`<select id="${id}" name="${d.k}"><option value="">（選択）</option>${g('pesticides','農薬')}${g('fertilizers','肥料等')}</select>`+(live('pesticides').length+live('fertilizers').length?'':'<p class="mut">先に台帳の「農薬」「肥料等」に資材を登録してください。</p>')}
   if(t==='famic')return famicBox();
   if(t==='std')return `<div id="stdbox"></div><datalist id="tglist"></datalist>`;
   if(t==='phi')return `<div id="phibox"></div>`;
@@ -252,7 +260,7 @@ function pkHtml(){const c=formCtx,list=pkList();
   return `<label>作付 <span style="color:var(--red)">必須</span>　<span id="pkcount">${pkCount()}</span></label>
     ${list.length>PK_SHOW?`<div class="pkbar"><input type="search" data-pkq placeholder="絞り込み（圃場名・品目）" value="${esc(c.pkQ)}" autocomplete="off"></div>`:''}
     <div id="pkchips">${pkChips()}</div>`}
-const pkCount=()=>formCtx.pk.length?`<b style="color:var(--ink)">${formCtx.pk.length}件選択中</b>`:'複数選べます';
+const pkCount=()=>formCtx.pk.length?`<b style="color:var(--ink)">${formCtx.pk.length}件選択中</b>`+(formCtx.pk.length>1&&RT[formCtx.type]&&RT[formCtx.type].defs.some(d=>d.split)?'（数量は合計を入れると、作付の面積で分けて記録します）':''):'複数選べます';
 function pkChips(){
   const c=formCtx,list=pkList(),q=kana(c.pkQ);
   let shown=q?list.filter(x=>kana(plantingLabel(x)+' '+(x.varietyNote||'')).includes(q)):list;
@@ -313,7 +321,7 @@ function collect(){
 /* ---------- 記録 ---------- */
 function recordForm(type,rec,dup){
   const isNew=!rec||dup,last=db.meta.last||{};
-  const base=rec?Object.assign({},rec):{date:today(),workerId:last.workerId||'',machineId:last.machineId||'',unit:(last.unit||{})[type]||''};
+  const base=rec?Object.assign({},rec):{date:today(),workerId:last.workerId||'',machineId:last.machineId||'',unit:(last.unit||{})[type]||'',usedUnit:last.usedUnit||''};
   if(dup){delete base.id;base.date=today();base.plantingIds=[rec.plantingId];base.photoIds=[]}
   else if(!rec&&sub.planting)base.plantingIds=[sub.planting];
   const defs=[{k:'date',l:'日付',t:'date',req:1},
@@ -323,11 +331,14 @@ function recordForm(type,rec,dup){
     onSave:(v,c)=>{
       if(type==='pesticide')v.use=c.useSel||'';
       const ids=isNew?v.plantingIds:[v.plantingId];delete v.plantingIds;
-      ids.forEach(pid=>{const r=Object.assign({},isNew?{}:rec,v,{type,plantingId:pid});
+      const sk=ids.length>1?RT[type].defs.filter(d=>d.split&&typeof v[d.k]==='number'&&!isNaN(v[d.k])):[];
+      const shares=sk.length?splitShares(ids):null;
+      ids.forEach((pid,i)=>{const r=Object.assign({},isNew?{}:rec,v,{type,plantingId:pid});
+        if(shares){r.splitOf={n:ids.length};sk.forEach(d=>{r.splitOf[d.k]=v[d.k];r[d.k]=Math.round(v[d.k]*shares[i]*1000)/1000})}
         if(type==='harvest'){const p=byId('plantings',pid),f=p&&byId('fields',p.fieldId);r.lot=(v.date||'').replace(/-/g,'')+'-'+(f?f.name:'')}
         upsert('records',r)});
-      db.meta.last=Object.assign({},last,{workerId:v.workerId||last.workerId||'',machineId:v.machineId||last.machineId||'',unit:Object.assign({},last.unit,v.unit?{[type]:v.unit}:{})});
-      toast(ids.length>1?ids.length+'件を記録しました':'記録しました');
+      db.meta.last=Object.assign({},last,{workerId:v.workerId||last.workerId||'',machineId:v.machineId||last.machineId||'',unit:Object.assign({},last.unit,v.unit?{[type]:v.unit}:{}),usedUnit:v.usedUnit||last.usedUnit||''});
+      toast(ids.length>1?ids.length+'件を記録しました'+(sk.length?'（数量は面積で分けました）':''):'記録しました');
     },
     onDelete:isNew?null:()=>removeItem('records',rec.id)});
 }
@@ -452,6 +463,54 @@ async function famicCheckAll(){const list=live('pesticides').filter(x=>x.famic);
     catch(e){importMsg={ng:1,text:famicFail};render();return}}
   await save();importMsg={ng:msgs.some(m=>m.includes('失効')),text:`台帳の農薬${list.length}件の登録内容を確認しました。`+(msgs.length?msgs.join('。')+'。':'変更はありませんでした。')};render()}
 
+/* ---------- 在庫 ---------- */
+const STOCK_UNITS=['kg','g','L','mL','袋','本','t'];
+const UNIT_BASE={g:['重さ',1],kg:['重さ',1000],t:['重さ',1e6],mL:['容量',1],L:['容量',1000]};
+const toBase=(q,u)=>{const b=UNIT_BASE[u];return b?[b[0],q*b[1]]:[u||'',q]};
+const r3=x=>Math.round(x*1000)/1000;
+/* 複数の作付に分けるときの割合（作付面積、なければ圃場面積。どれかが不明なら等分） */
+function splitShares(pids){const w=pids.map(pid=>{const p=byId('plantings',pid);let a=p&&+p.area;if(!(a>0)){const f=p&&byId('fields',p.fieldId);a=f&&+f.area}return a>0?a:0});
+  const ok=w.every(x=>x>0),ws=ok?w:pids.map(()=>1),s=ws.reduce((a,b)=>a+b,0);return ws.map(x=>x/s)}
+function stockOf(col,id){
+  const ev=[];
+  live('stock').filter(x=>x.col===col&&x.itemId===id).forEach(x=>ev.push({date:x.date,kind:x.kind,qty:x.qty,unit:x.unit,src:x,o:x.kind==='in'?0:2}));
+  live('records').filter(r=>r.itemId===id&&((col==='pesticides'&&r.type==='pesticide'&&typeof r.usedQty==='number')||(col==='fertilizers'&&r.type==='fertilizer'&&typeof r.amount==='number')))
+    .forEach(r=>ev.push({date:r.date,kind:'use',qty:col==='pesticides'?r.usedQty:r.amount,unit:col==='pesticides'?r.usedUnit:r.unit,rec:r,o:1}));
+  ev.sort((a,b)=>(a.date||'').localeCompare(b.date||'')||a.o-b.o);
+  const unitSrc=[...ev].reverse().find(e=>e.kind!=='use')||[...ev].reverse()[0];
+  const unit=unitSrc?unitSrc.unit:'';const [dim,fac]=toBase(1,unit);
+  let run=0,inSum=0,useSum=0,skipped=0,lastCount=null;const hist=[];
+  ev.forEach(e=>{const [d,b]=toBase(e.qty,e.unit);if(d!==dim){skipped++;hist.push(Object.assign(e,{skip:1}));return}
+    if(e.kind==='in'){run+=b;inSum+=b}else if(e.kind==='use'){run-=b;useSum+=b}else{const diff=b-run;lastCount={date:e.date,diff:r3(diff/fac)};run=b}
+    hist.push(Object.assign(e,{after:r3(run/fac)}))});
+  return{unit,qty:r3(run/fac),inSum:r3(inSum/fac),useSum:r3(useSum/fac),skipped,lastCount,hist,has:ev.length>0}}
+function stockForm(kind,x){const isNew=!x;
+  const defs=[{k:'date',l:'日付',t:'date',req:1},{k:'mat',l:'資材',t:'mat',req:1},
+    {k:'qty',l:kind==='in'?'入庫した量':'実際の在庫量',t:'number',req:1,row:'s1'},{k:'unit',l:'単位',t:'select',opts:STOCK_UNITS,row:'s1',s:1}]
+    .concat(kind==='in'?[{k:'supplier',l:'購入先'}]:[],[{k:'memo',l:'メモ',t:'textarea'},{k:'photoIds',l:'写真',t:'photos'}]);
+  const vals=x?Object.assign({},x,{mat:x.col+':'+x.itemId}):{date:today(),mat:sub.stockMat||'',unit:''};
+  if(isNew&&vals.mat){const [c,i]=vals.mat.split(':');const st=stockOf(c,i);if(st.unit)vals.unit=st.unit}
+  openForm({title:(kind==='in'?'入庫':'棚卸')+(isNew?'を記録':'の修正'),defs,values:vals,submitLabel:'記録する',
+    onSave:v=>{const [col,itemId]=v.mat.split(':');delete v.mat;upsert('stock',Object.assign({},x||{},v,{kind,col,itemId}));sub.stockMat=col+':'+itemId;toast('記録しました')},
+    onDelete:isNew?null:()=>removeItem('stock',x.id)})}
+function vStock(){
+  const mats=[...live('pesticides').map(x=>['pesticides',x]),...live('fertilizers').map(x=>['fertilizers',x])];
+  const sel=sub.stockMat;
+  const rows=mats.map(([c,x])=>{const st=stockOf(c,x.id),key=c+':'+x.id,open=sel===key;
+    return `<button class="item" data-act="stockMat" data-k="${key}"><div class="t">${esc(x.name)}　<span style="color:${st.qty<0?'var(--red)':'var(--ink)'}">${st.has?'在庫 '+st.qty+esc(st.unit):'記録なし'}</span></div>
+      <div class="s">${c==='pesticides'?'農薬':'肥料等'}${st.has?`　入庫 ${st.inSum}${esc(st.unit)}・使用 ${st.useSum}${esc(st.unit)}`:''}${st.lastCount?`　棚卸 ${fmtMD(st.lastCount.date)}（差 ${st.lastCount.diff>0?'+':''}${st.lastCount.diff}${esc(st.unit)}）`:''}</div>
+      ${st.qty<0?'<div class="s" style="color:var(--red)">在庫がマイナスです。入庫の記録漏れか、単位の違いがないか確認してください。</div>':''}
+      ${st.skipped?`<div class="s">単位が違うため計算に入れていない記録が${st.skipped}件あります。</div>`:''}</button>`
+      +(open?`<div class="card"><table><tr><th>日付</th><th>内容</th><th class="n">数量</th><th class="n">在庫</th></tr>${st.hist.slice().reverse().map(e=>`<tr ${e.src?`data-act="editStock" data-id="${e.src.id}" style="cursor:pointer"`:''}><td>${fmtMD(e.date)}</td><td>${e.kind==='in'?'入庫'+(e.src.supplier?'（'+esc(e.src.supplier)+'）':''):e.kind==='count'?'棚卸':'使用：'+esc(plantingLabel(byId('plantings',e.rec.plantingId)))}</td><td class="n">${e.kind==='use'?'-':''}${e.qty}${esc(e.unit||'')}</td><td class="n">${e.skip?'計算外':e.after+esc(st.unit)}</td></tr>`).join('')||'<tr><td colspan="4" class="mut">記録はまだありません</td></tr>'}</table>
+      <p class="mut">入庫・棚卸の行を押すと修正できます。使用は農薬使用・施肥の記録から自動で入ります。</p></div>`:'')}).join('');
+  return `<div class="row" style="margin:10px 0"><button class="pri" data-act="newStock" data-kind="in">＋ 入庫を記録</button><button data-act="newStock" data-kind="count">＋ 棚卸を記録</button></div>
+    ${mats.length?rows:'<p class="mut">台帳の「農薬」「肥料等」に資材を登録すると、ここに在庫が出ます。</p>'}
+    <p class="mut">在庫＝入庫した量－使った量（農薬は「使った薬量」、肥料は「施肥量」）。棚卸で実際の量を記録すると、その日の在庫をその量に合わせ、差を表示します。</p>`}
+function stockCsv(){const q=v=>{v=v==null?'':String(v);return /[",\r\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v};const out=[['資材','区分','日付','内容','数量','単位','在庫（この後）','在庫の単位','購入先','作付','メモ'].join(',')];
+  [...live('pesticides').map(x=>['pesticides',x]),...live('fertilizers').map(x=>['fertilizers',x])].forEach(([c,x])=>{const st=stockOf(c,x.id);
+    st.hist.forEach(e=>out.push([x.name,c==='pesticides'?'農薬':'肥料等',e.date,{in:'入庫',use:'使用',count:'棚卸'}[e.kind],e.qty,e.unit,e.skip?'':e.after,st.unit,e.src&&e.src.supplier,e.rec?plantingLabel(byId('plantings',e.rec.plantingId)):'',(e.src||e.rec||{}).memo].map(q).join(',')))});
+  return '﻿'+out.join('\r\n')}
+
 /* ---------- 画面 ---------- */
 const NAV=[['home','ホーム'],['records','記録'],['plantings','作付'],['master','台帳'],['data','データ']];
 function backupWarn(){
@@ -488,10 +547,12 @@ function vPlantings(){
     +addBtns()+`<h3>作業の履歴（新しい順）</h3>`+(recs.length?recs.map(r=>recItem(r,false)).join(''):'<p class="mut">この作付の記録はまだありません。</p>');
 }
 function vMaster(){
-  const k=sub.master,m=MASTERS[k],list=live(k);
-  return `<h2>台帳</h2><label>農場名</label><input data-chg="farm" value="${esc(db.meta.farmName)}" placeholder="農場名・生産者名">
-    <div class="tabs" style="margin-top:12px">${Object.keys(MASTERS).map(x=>`<button class="tab ${x===k?'on':''}" data-act="masterTab" data-k="${x}">${MASTERS[x].label}（${live(x).length}）</button>`).join('')}</div>
-    <div style="margin:10px 0"><button class="pri" data-act="newMaster">＋ ${m.label}を追加</button></div>`
+  const k=sub.master,head=`<h2>台帳</h2><label>農場名</label><input data-chg="farm" value="${esc(db.meta.farmName)}" placeholder="農場名・生産者名">
+    <div class="tabs" style="margin-top:12px"><button class="tab ${k==='stock'?'on':''}" data-act="masterTab" data-k="stock">在庫</button>${Object.keys(MASTERS).map(x=>`<button class="tab ${x===k?'on':''}" data-act="masterTab" data-k="${x}">${MASTERS[x].label}（${live(x).length}）</button>`).join('')}</div>`;
+  if(k==='stock')return head+vStock();
+  const m=MASTERS[k],list=live(k);
+  return head+`
+<div style="margin:10px 0"><button class="pri" data-act="newMaster">＋ ${m.label}を追加</button></div>`
     +(list.length?list.map(x=>`<button class="item" data-act="editMaster" data-id="${x.id}"><div class="t">${esc(refLabel(k,x))}</div><div class="s">${esc(m.sub(x))}</div></button>`).join(''):`<p class="mut">${m.label}はまだ登録されていません。</p>`);
 }
 let importMsg=null,shareFile=null,dbVer=0;
@@ -511,7 +572,7 @@ function vData(){
     <button data-act="shareJson" style="width:100%">共有する</button>
     <p class="mut">受け取った人には、ファイルを開かずに、栽培ノートの「データファイルを読み込む」から読み込むよう伝えてください。開いて文字を書き換えると読み込めなくなります。</p>`:''}
     <div style="margin-top:8px"><label>データファイルを読み込む（今のデータと統合します）</label><input type="file" id="imp"></div>
-    <h3>表計算用</h3><button data-act="exportCsv">記録の一覧をCSVで書き出す</button>
+    <h3>表計算用</h3><div class="row"><button data-act="exportCsv">記録の一覧をCSVで書き出す</button><button data-act="exportStockCsv">在庫の記録をCSVで書き出す</button></div>
     <p class="mut" style="margin-top:16px">記録はこの端末の中だけに保存され、外部には送信されません。書き出したファイルを保管しておくと、端末の故障や機種変更のときに元に戻せます。</p>`;
 }
 function render(){
@@ -531,10 +592,10 @@ function merge(inc){let add=0,upd=0;
     if(i<0){db[c].push(x);add++}else if((x.updatedAt||'')>(db[c][i].updatedAt||'')){db[c][i]=x;upd++}}));
   if(!db.meta.farmName&&inc.meta&&inc.meta.farmName)db.meta.farmName=inc.meta.farmName;return{add,upd}}
 function csvText(){
-  const head=['日付','種類','作業','作業時間(h)','人数','圃場','品目','品種','作期','作付メモ','栽培区分','資材名','登録番号','有効成分','希釈倍数','散布液量(L/10a)','数量','単位','施用面積(a)','対象病害虫・雑草','方法','機械','天候','風','散布終了時刻','登録の使い方','収穫ロット','作業者','メモ','写真枚数'];
+  const head=['日付','種類','作業','作業時間(h)','人数','圃場','品目','品種','作期','作付メモ','栽培区分','資材名','登録番号','有効成分','希釈倍数','散布液量(L/10a)','使った薬量','薬量の単位','数量','単位','施用面積(a)','対象病害虫・雑草','方法','機械','天候','風','散布終了時刻','登録の使い方','収穫ロット','作業者','メモ','写真枚数'];
   const q=v=>{v=v==null?'':String(v);return /[",\r\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v};
   const rows=sortedRecs().reverse().map(r=>{const p=byId('plantings',r.plantingId)||{},f=byId('fields',p.fieldId)||{},c=byId('crops',p.cropId)||{},it=(itemCol(r.type)&&byId(itemCol(r.type),r.itemId))||{};
-    return [r.date,(RT[r.type]||{}).label,r.type==='work'?it.name:'',r.hours,r.people,f.name,c.name,c.variety,p.season,p.varietyNote,p.type,r.type==='work'?'':it.name,it.regNo,it.ingredient,r.dilution,r.sprayVol,r.amount,r.type==='pesticide'?'':r.unit,r.area,r.target,r.method,
+    return [r.date,(RT[r.type]||{}).label,r.type==='work'?it.name:'',r.hours,r.people,f.name,c.name,c.variety,p.season,p.varietyNote,p.type,r.type==='work'?'':it.name,it.regNo,it.ingredient,r.dilution,r.sprayVol,r.usedQty,r.usedUnit,r.amount,r.type==='pesticide'?'':r.unit,r.area,r.target,r.method,
       (byId('machines',r.machineId)||{}).name,r.weather,r.wind,r.endTime,r.use?r.use.split('|').filter(Boolean).join('・'):'',r.lot,(byId('workers',r.workerId)||{}).name,r.memo,(r.photoIds||[]).length||''].map(q).join(',')});
   return '﻿'+[head.join(',')].concat(rows).join('\r\n');
 }
@@ -547,6 +608,10 @@ const ACT={
     $('#frm .acts').insertAdjacentHTML('beforeend',`<button type="button" data-act="dupRec" data-id="${r.id}">複製して新しく記録</button>`)},
   dupRec:e=>{const r=byId('records',e.dataset.id);closeForm(true);recordForm(r.type,r,true)},
   masterTab:e=>{sub.master=e.dataset.k;render()},
+  stockMat:e=>{sub.stockMat=sub.stockMat===e.dataset.k?'':e.dataset.k;render()},
+  newStock:e=>stockForm(e.dataset.kind),
+  editStock:e=>{const x=byId('stock',e.dataset.id);if(x)stockForm(x.kind,x)},
+  exportStockCsv:()=>{download('栽培ノート在庫_'+stamp()+'.csv',stockCsv(),'text/csv');toast('在庫のCSVを書き出しました')},
   newMaster:()=>{const k=sub.master;openForm({title:MASTERS[k].label+'を追加',defs:MASTERS[k].defs,values:{},onSave:(v,c)=>{if(c.famic)v.famic=c.famic;upsert(k,v)}})},
   editMaster:e=>{const k=sub.master,x=byId(k,e.dataset.id);openForm({title:MASTERS[k].label+'の修正',defs:MASTERS[k].defs,values:x,onSave:(v,c)=>{if(c.famic)v.famic=c.famic;upsert(k,Object.assign({},x,v))},onDelete:()=>removeItem(k,x.id)})},
   closeForm:e=>{if(formDirty()&&e.dataset.sure!=='1'){backWarn();return}closeForm()},
@@ -618,6 +683,7 @@ document.addEventListener('change',async e=>{const el=e.target;
   sub[k]=el.value;render()});
 $('#modal').addEventListener('click',e=>{if(e.target.id==='modal')closeForm()});
 load().then(()=>{if(!db.meta.seededTasks){seedTasks();save()}render()});
+if('serviceWorker' in navigator&&(location.protocol==='https:'||location.hostname==='localhost'))navigator.serviceWorker.register('sw.js').catch(()=>{});
 </script>
 </body>
 </html>
