@@ -27,9 +27,9 @@ button.pri{background:var(--g);color:#fff;font-weight:600}
 button.big{padding:16px 10px;font-size:17px;font-weight:600}
 button.sm{min-height:36px;padding:6px 10px;font-size:14px}
 button.danger{border-color:var(--red);color:var(--red)}
-button.tab{border-color:var(--line);color:var(--ink);min-height:38px;padding:6px 12px;font-size:14px;flex:0 0 auto}
+button.tab{border-color:var(--line);color:var(--ink);min-height:40px;padding:6px 4px;font-size:14px;flex:1 1 30%}
 button.tab.on{background:var(--g2);border-color:var(--gt);color:var(--gt);font-weight:600}
-.tabs{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px}
+.tabs{display:flex;flex-wrap:wrap;gap:6px;padding-bottom:4px}
 .item{display:block;width:100%;text-align:left;background:#fff;border:1px solid var(--line);color:var(--ink);border-radius:10px;padding:10px 12px;margin:6px 0;min-height:0}
 .item .t{font-weight:600}
 .item .s{color:var(--mut);font-size:14px}
@@ -70,13 +70,14 @@ nav button.on{color:var(--gt);font-weight:700;box-shadow:inset 0 3px 0 var(--g)}
 .fd>label:first-child,.fd>.frow>.fc>label:first-child,.fd>#pkwrap>label:first-child{margin-top:6px}
 .legend{font-size:13px;color:var(--mut);margin:-6px 0 4px}
 .legend i{display:inline-block;width:14px;height:14px;vertical-align:-2px;background:var(--g2);border-left:4px solid var(--g);border-radius:3px;margin-right:4px}
+.mk{font-size:13px;font-weight:600;margin-left:8px;white-space:nowrap}.mk.y{color:var(--gt)}.mk.n{color:var(--red)}
 .std{border:1px solid var(--line);border-radius:10px;padding:8px 10px;margin:8px 0 0;background:#fff;font-size:14px;line-height:1.45}
 .std.ng{border-color:#e0a49c;background:#fff6f5}
 .std ul{margin:4px 0 0;padding-left:18px}.std li{margin:2px 0}.std li.w{color:var(--red);font-weight:600}
 .std .cr{color:var(--mut);font-size:13px}
 .fsearch{background:#f4f6f4;border:1px solid var(--line);border-radius:10px;padding:2px 10px 10px;margin-top:6px}
 .fres .item{padding:8px 10px;margin:4px 0}
-.fnote{font-size:12px;color:var(--mut);line-height:1.5}.fnote p{margin:6px 0}
+.fnote{font-size:12px;color:var(--mut);line-height:1.5}details.fnote{margin-top:8px}details.fnote summary{cursor:pointer}.fnote p{margin:6px 0}
 .okmsg button,.warn button{margin-top:6px}
 .frow{display:flex;gap:8px;align-items:flex-end}
 .frow>.fc{flex:1 1 0;min-width:0}
@@ -95,6 +96,8 @@ label.btn{display:inline-flex;align-items:center;justify-content:center;color:va
 .ph .pv{padding:0;border:0;width:100%;height:100%;min-height:0;background:none}
 .ph img,.th img{width:100%;height:100%;object-fit:cover;border-radius:8px;border:1px solid var(--line);display:block}
 .ph .x{position:absolute;top:-8px;right:-8px;width:28px;height:28px;min-height:0;padding:0;border-radius:50%;background:#fff;color:var(--red);border-color:var(--red);font-size:16px;line-height:1}
+.ri{display:flex;gap:8px;align-items:center}.ri>.tx{flex:1;min-width:0}.ri .d{font-weight:600;margin-right:6px}.ri .pl{color:var(--mut);font-size:14px}
+.ri .ph2{display:flex;gap:4px;flex:0 0 auto;align-items:center}.ri .ph2 img{width:44px;height:44px;object-fit:cover;border-radius:6px;display:block}.ri .ph2 .n{font-size:12px;color:var(--mut)}
 .th{display:flex;gap:6px;margin-top:6px;align-items:center}
 .th span{width:56px;height:56px;display:block}
 #viewer{position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:30;display:flex;align-items:center;justify-content:center;padding:8px}
@@ -170,7 +173,7 @@ function refLabel(c,x){if(!x)return'';if(c==='plantings')return plantingLabel(x)
 const MASTERS={
   fields:{label:'圃場',defs:[{k:'name',l:'圃場名・番号',req:1},{k:'lot',l:'所在地（地番・施設番号など）'},{k:'area',l:'面積（a）',t:'number'},{k:'water',l:'取水・排水経路'},{k:'note',l:'周辺リスクなどのメモ',t:'textarea'}],
     sub:x=>[x.lot,x.area!==''&&x.area!=null?x.area+'a':''].filter(Boolean).join('　')},
-  crops:{label:'品目',defs:[{k:'name',l:'品目名',req:1},{k:'variety',l:'品種（品種ごとに作付を分ける場合）'}],sub:x=>{const it=cmItemFor(x.name);return [x.variety,it?(it.custom?'農薬の照合：対応表にない品目（同じ作物名の登録だけ）':'農薬の照合：'+it.name):''].filter(Boolean).join('　')}},
+  crops:{label:'品目',defs:[{k:'name',l:'品目名',req:1},{k:'variety',l:'品種（品種ごとに作付を分ける場合）'}],sub:()=>'',mark:x=>{const it=cmItemFor(x.name);return it&&!it.custom?'<span class="mk y">農薬の照合✔</span>':'<span class="mk n">農薬の照合✘</span>'}},
   plantings:{label:'作付',defs:[{k:'fieldId',l:'圃場',t:'ref',ref:'fields',add:1,req:1},{k:'cropId',l:'品目',t:'ref',ref:'crops',add:1,req:1},
     {k:'season',l:'作期（例：2026年 春作）'},{k:'varietyNote',l:'作付メモ（品種など）'},{k:'type',l:'栽培区分（例：慣行、特別栽培）'},{k:'area',l:'作付面積（a）',t:'number'},
     {k:'start',l:'開始日',t:'date'},{k:'harvestPlan',l:'収穫予定時期'},{k:'done',l:'この作付は終了した',t:'check'}],
@@ -220,7 +223,7 @@ function recSummary(r){
   if(r.type==='pesticide')return [n,r.dilution!==''&&r.dilution!=null?r.dilution+'倍':'',r.sprayVol!==''&&r.sprayVol!=null?r.sprayVol+'L/10a':'',r.amount,r.usedQty!==''&&r.usedQty!=null?'薬量'+r.usedQty+(r.usedUnit||''):''].filter(Boolean).join('　');
   if(r.type==='work')return [n,r.hours!==''&&r.hours!=null?r.hours+'時間':'',r.people!==''&&r.people!=null?r.people+'人':''].filter(Boolean).join('　');
   if(r.type==='fertilizer')return [n,(r.amount!==''&&r.amount!=null?r.amount:'')+(r.unit||'')].filter(Boolean).join('　');
-  return (r.amount!==''&&r.amount!=null?r.amount:'')+(r.unit||'')+(r.lot?'　ロット '+r.lot:'');
+  return (r.amount!==''&&r.amount!=null?r.amount:'')+(r.unit||'');
 }
 const sortedRecs=()=>live('records').slice().sort((a,b)=>(b.date||'').localeCompare(a.date||'')||(b.updatedAt||'').localeCompare(a.updatedAt||''));
 
@@ -344,16 +347,19 @@ function recordForm(type,rec,dup){
 }
 function recItem(r,showP){
   const t=RT[r.type]||{label:r.type,tag:''};
-  return `<button class="item" data-act="editRec" data-id="${r.id}"><div class="t"><span class="tag ${t.tag}">${t.label}</span>${esc(r.date)}</div>
-    <div>${esc(recSummary(r))}</div>${showP?`<div class="s">${esc(plantingLabel(byId('plantings',r.plantingId)))}</div>`:''}
-    ${r.memo?`<div class="s">${esc(r.memo)}</div>`:''}${(r.photoIds||[]).length?`<div class="th">${r.photoIds.slice(0,3).map(id=>thumbs[id]?`<span><img src="${thumbs[id]}" alt=""></span>`:'').join('')}<span class="mut" style="width:auto;height:auto">写真${r.photoIds.length}枚</span></div>`:''}</button>`;
+  const ph=r.photoIds||[],th=ph.find(id=>thumbs[id]);
+  const yr=(r.date||'').slice(0,4),d=r.date?(yr!==String(new Date().getFullYear())?yr+'/':'')+fmtMD(r.date):'';
+  return `<button class="item" data-act="editRec" data-id="${r.id}"><div class="ri"><div class="tx">
+    <div><span class="tag ${t.tag}">${t.label}</span><span class="d">${esc(d)}</span>${showP?`<span class="pl">${esc((p=>{if(!p)return '';const f=byId('fields',p.fieldId),c=byId('crops',p.cropId);return (f?f.name:'')+'｜'+(c?c.name:'')})(byId('plantings',r.plantingId)))}</span>`:''}</div>
+    <div>${esc(recSummary(r))}${r.memo?`<span class="pl">　${esc(r.memo)}</span>`:''}</div></div>
+    ${ph.length?`<div class="ph2">${th?`<img src="${thumbs[th]}" alt="">`:''}${ph.length>1||!th?`<span class="n">${ph.length}枚</span>`:''}</div>`:''}</div></button>`;
 }
 
 /* ---------- 農薬登録情報（FAMIC）と使用基準の確認 ---------- */
 const FAMIC_DIR='data/famic/';
 const FAMIC_NOTE1='本アプリで提供する農薬の情報は、独立行政法人農林水産消費安全技術センター（FAMIC）が公表する『農薬登録情報ダウンロード』から取得したデータを本サイト（soranoiro.net）が複製・加工したものです。提供情報については正確性を期すように努力しておりますが、その正確性、完全性が保証されているものではありません。実際に農薬を使用する際は、必ず製品ラベルにより登録内容をご確認ください。';
 const FAMIC_NOTE2='本情報の利用により直接又は間接的に生じた利用者又はそれ以外の第三者の損害について、独立行政法人農林水産消費安全技術センターはその内容、方法の如何にかかわらず、一切責任を負いません。';
-const famicNotes=()=>`<div class="fnote"><p>${FAMIC_NOTE1}</p><p>${FAMIC_NOTE2}</p></div>`;
+const famicNotes=()=>`<details class="fnote"><summary>農薬の情報は、FAMIC「農薬登録情報ダウンロード」のデータを本サイトが複製・加工したものです。使用の際は必ずラベルで確認してください。（出典と注意の全文）</summary><p>${FAMIC_NOTE1}</p><p>${FAMIC_NOTE2}</p></details>`;
 let famicIdx=null,famicIdxP=null;
 function famicIndex(){if(famicIdx)return Promise.resolve(famicIdx);
   if(!famicIdxP)famicIdxP=fetch(FAMIC_DIR+'index.json',{cache:'no-cache'}).then(r=>{if(!r.ok)throw new Error('HTTP '+r.status);return r.json()})
@@ -363,7 +369,7 @@ async function famicReg(no){const r=await fetch(FAMIC_DIR+'r/'+no+'.json',{cache
 const famicFail='登録情報を読み込めませんでした。公開アドレス（https://…）で開き、通信できる状態で試してください。';
 function famicBox(){return `<div class="fsearch"><label>登録情報から探す（農薬名・登録番号）</label>
   <input type="search" data-fq autocomplete="off" placeholder="例：ダコニール、21220"><div class="fres" id="fres"></div><div id="fsel">${famicSel()}</div>
-  <details class="fnote"><summary>農薬の情報の出典と注意</summary>${famicNotes()}</details></div>`}
+  ${famicNotes()}</div>`}
 function famicSel(){const d=formCtx&&formCtx.famic;if(!d)return '';
   return `<div class="okmsg">登録情報：${esc(d.name)}（登録番号${d.regNo}、${esc(d.asOf)}反映）<br>${esc(d.ing.map(x=>x[0]+' '+x[2]).join('、'))}
     <br><button type="button" class="sm" data-act="fcheck">登録内容を確認</button><span id="fchk"></span></div>`}
@@ -553,7 +559,7 @@ function vMaster(){
   const m=MASTERS[k],list=live(k);
   return head+`
 <div style="margin:10px 0"><button class="pri" data-act="newMaster">＋ ${m.label}を追加</button></div>`
-    +(list.length?list.map(x=>`<button class="item" data-act="editMaster" data-id="${x.id}"><div class="t">${esc(refLabel(k,x))}</div><div class="s">${esc(m.sub(x))}</div></button>`).join(''):`<p class="mut">${m.label}はまだ登録されていません。</p>`);
+    +(list.length?list.map(x=>`<button class="item" data-act="editMaster" data-id="${x.id}"><div class="t">${esc(refLabel(k,x))}${m.mark?m.mark(x):''}</div>${m.sub(x)?`<div class="s">${esc(m.sub(x))}</div>`:''}</button>`).join(''):`<p class="mut">${m.label}はまだ登録されていません。</p>`);
 }
 let importMsg=null,shareFile=null,dbVer=0;
 function vData(){
@@ -564,15 +570,15 @@ function vData(){
     <tr><th>保存先</th><td>${mode}</td></tr><tr><th>記録</th><td>${live('records').length}件</td></tr><tr><th>作付</th><td>${live('plantings').length}件</td></tr>
     <tr><th>写真</th><td>${usedPhotoIds().length}枚${storeMode==='idb'?'':'（この画面では写真は保存されません）'}</td></tr>
     <tr><th>最後の書き出し</th><td>${db.meta.lastExport?esc(db.meta.lastExport.slice(0,10)):'なし'}</td></tr></table></div>
-    <h3>農薬の登録情報</h3><p class="mut">台帳の農薬のうち、登録情報と結びついているもの：${live('pesticides').filter(x=>x.famic).length}件</p>
+    <h3>農薬の登録情報</h3><p>農薬の照合状況　<span class="mk y" style="margin:0">✔：${live('pesticides').filter(x=>x.famic).length}件</span>　<span class="mk n" style="margin:0">✘：${live('pesticides').filter(x=>!x.famic).length}件</span></p><p class="mut">✘の農薬は、台帳で「登録情報から探す」を使うと照合できます。</p>
     <button data-act="checkAll" style="width:100%">台帳の農薬の登録内容をまとめて確認する</button>${famicNotes()}
     <h3>バックアップ・機種変更（この端末に保存）</h3><label class="chk"><input type="checkbox" id="withPhotos" checked>写真を含める（ファイルが大きくなります）</label>
     <button class="pri" data-act="exportJson" style="width:100%">データファイルを書き出す</button>
+    <h3>表計算用データ出力</h3><div class="row"><button data-act="exportCsv">記録の一覧をCSVで書き出す</button><button data-act="exportStockCsv">在庫の記録をCSVで書き出す</button></div>
     ${navigator.share?`<h3>ほかの人・端末に送る（LINE・メール）</h3><label class="chk"><input type="checkbox" id="sharePhotos">写真を含める（通常は含めずに送ります）</label>
     <button data-act="shareJson" style="width:100%">共有する</button>
     <p class="mut">受け取った人には、ファイルを開かずに、栽培ノートの「データファイルを読み込む」から読み込むよう伝えてください。開いて文字を書き換えると読み込めなくなります。</p>`:''}
     <div style="margin-top:8px"><label>データファイルを読み込む（今のデータと統合します）</label><input type="file" id="imp"></div>
-    <h3>表計算用</h3><div class="row"><button data-act="exportCsv">記録の一覧をCSVで書き出す</button><button data-act="exportStockCsv">在庫の記録をCSVで書き出す</button></div>
     <p class="mut" style="margin-top:16px">記録はこの端末の中だけに保存され、外部には送信されません。書き出したファイルを保管しておくと、端末の故障や機種変更のときに元に戻せます。</p>`;
 }
 function render(){
