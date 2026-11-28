@@ -2,9 +2,9 @@
    権限は drive.file のみ。アプリで作ったファイルと、利用者がファイル選択画面で選んだファイルだけを扱う。
    記録はGoogleのサーバーと利用者の端末の間だけでやり取りし、提供者には届かない。 */
 const DRIVE_CFG={
-  clientId:'',   /* OAuthクライアントID（…apps.googleusercontent.com） */
-  apiKey:'',     /* APIキー（Google Picker API に制限） */
-  appId:''       /* プロジェクト番号 */
+  clientId:'793646954613-esbn4cdbhigc7mt5e9bj8iflhf06kos8.apps.googleusercontent.com',   /* OAuthクライアントID（…apps.googleusercontent.com） */
+  apiKey:'AIzaSyATNL9A0MJZPvTETq027pvKlrFa22GtVC8',     /* APIキー（Google Picker API に制限） */
+  appId:'793646954613'       /* プロジェクト番号 */
 };
 const DRIVE_SCOPE='https://www.googleapis.com/auth/drive.file';
 const Drive=(()=>{
