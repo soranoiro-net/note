@@ -49,6 +49,9 @@ const Drive=(()=>{
     return (await api(`/upload/drive/v3/files/${id}?uploadType=media&fields=${META}`,{method:'PATCH',headers:{'Content-Type':'application/json; charset=UTF-8'},body:text})).json();
   }
   async function meta(id){return (await api(`/drive/v3/files/${id}?fields=${META},trashed`)).json()}
+  /* このアプリで作ったファイル（どの端末で作ったものでも）の一覧 */
+  async function list(){const q=encodeURIComponent("trashed=false and mimeType='application/json'");
+    return ((await(await api(`/drive/v3/files?q=${q}&orderBy=modifiedTime desc&pageSize=50&fields=files(${META})`)).json()).files||[])}
   async function read(id){return (await api(`/drive/v3/files/${id}?alt=media`)).text()}
   /* Googleのファイル選択画面。選んだファイルだけ、このアプリから扱えるようになる */
   async function pick(title){
@@ -67,5 +70,5 @@ const Drive=(()=>{
     });
   }
   function signOut(){if(tok&&window.google&&google.accounts)google.accounts.oauth2.revoke(tok,()=>{});tok=null;user=null}
-  return {ready,init,token,whoami,create,update,meta,read,pick,signOut,signedIn:()=>!!tok&&Date.now()<tokExp};
+  return {ready,init,token,whoami,create,update,meta,read,list,pick,signOut,signedIn:()=>!!tok&&Date.now()<tokExp};
 })();

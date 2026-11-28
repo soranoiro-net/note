@@ -814,7 +814,7 @@ async function exportText(withPhotos){db.meta.lastExport=new Date().toISOString(
   if(withPhotos){const ps=[];for(const id of usedPhotoIds()){const p=await photoGet(id).catch(()=>null);if(p)ps.push(p)}out.photos=ps}
   return JSON.stringify(out)}
 /* ---------- Googleドライブ（オプション） ---------- */
-let drvBusy='',drvErr='',drvLoadP=null;
+let drvBusy='',drvErr='',drvLoadP=null,drvFiles=null;
 const drv=()=>db.meta.drive||(db.meta.drive={});
 function loadDrive(){if((typeof Drive!=='undefined'))return Promise.resolve();if(!drvLoadP)drvLoadP=new Promise((res,rej)=>{const sc=document.createElement('script');sc.src='drive.js';sc.onload=res;sc.onerror=()=>{drvLoadP=null;rej(new Error('通信できません'))};document.head.appendChild(sc)})
   .then(()=>Drive.ready()?Drive.init():null);return drvLoadP}
@@ -825,6 +825,8 @@ const fmtAt=s=>s?new Date(s).toLocaleString('ja-JP',{month:'numeric',day:'numeri
 async function drvRun(label,fn){if(drvBusy)return;drvBusy=label;drvErr='';render();
   try{await Drive.token();const m=await fn();drvBusy='';await save();render();if(m)toast(m)}
   catch(err){drvBusy='';drvErr=(err&&err.message)||String(err);render()}}
+async function loadOwn(f){const r=await mergeText(await Drive.read(f.id));drv().own={id:f.id,name:f.name,at:f.modifiedTime||new Date().toISOString()};drvFiles=null;
+  return `「${f.name}」を読み込みました（新しい記録${r.add}件、更新${r.upd}件）。これからの保存もこのファイルに行います`}
 async function syncShared(){const d=drv(),sh=d.shared;let res=null;
   if(!d.user)try{d.user=(await Drive.whoami()).displayName||''}catch(e){}
   for(let i=0;i<3;i++){
@@ -844,7 +846,8 @@ function vDrive(){const d=drv(),busy=drvBusy,dis=busy?'disabled':'';
     <h3>自分のドライブに保存（バックアップ）</h3>
     ${own?`<p>保存先：${esc(own.name)}<br><span class="mut">最後の保存：${esc(fmtAt(own.at))}</span></p>`:'<p class="mut">まだ保存していません。</p>'}
     <button class="pri" data-act="drvSave" style="width:100%;margin-bottom:8px" ${dis}>ドライブに保存</button>
-    ${own?`<button data-act="drvLoad" style="width:100%;margin-bottom:8px" ${dis}>ドライブから読み込む（今のデータと統合）</button>`:''}
+    <button data-act="drvLoad" style="width:100%;margin-bottom:8px" ${dis}>ドライブから読み込む（今のデータと統合）</button>
+    ${drvFiles?`<div class="card"><p style="margin:0 0 6px">読み込むファイルを選んでください（このアプリで保存したファイル）</p>${drvFiles.map(f=>`<button class="item" data-act="drvLoadId" data-id="${esc(f.id)}"><div class="t">${esc(f.name)}</div><div class="s">${esc(fmtAt(f.modifiedTime))}${f.lastModifyingUser?'　'+esc(f.lastModifyingUser.displayName||''):''}</div></button>`).join('')}<button class="sm" data-act="drvFilesX">閉じる</button></div>`:''}
     <button data-act="drvPick" style="width:100%" ${dis}>ドライブのほかのファイルを選んで読み込む</button>
     <h3>複数人で記録する（共有）</h3>
     ${sh?`<div class="card"><table><tr><th>共有ファイル</th><td>${esc(sh.name||'')}</td></tr><tr><th>最後の同期</th><td>${esc(fmtAt(sh.at))||'まだ'}</td></tr><tr><th>入力者の名前</th><td>${esc(d.user||'（最初の同期で取得）')}</td></tr></table></div>
@@ -966,7 +969,13 @@ const ACT={
     if(d.own)try{f=await Drive.update(d.own.id,t)}catch(e){if(!/見つかりません/.test(e.message))throw e}
     if(!f)f=await Drive.create('栽培ノート_'+(db.meta.farmName||'データ')+'.json',t,'栽培ノートのデータ（バックアップ）');
     d.own={id:f.id,name:f.name,at:new Date().toISOString()};db.meta.lastExport=d.own.at;return 'ドライブに保存しました'}),
-  drvLoad:()=>drvRun('ドライブから読み込んでいます',async()=>{const r=await mergeText(await Drive.read(drv().own.id));return `読み込みました（新しい記録${r.add}件、更新${r.upd}件）`}),
+  drvLoad:()=>drvRun('ドライブを確認しています',async()=>{const d=drv();
+    if(d.own){try{const r=await mergeText(await Drive.read(d.own.id));return `読み込みました（新しい記録${r.add}件、更新${r.upd}件）`}catch(e){if(!/見つかりません/.test(e.message))throw e}}
+    const fs=(await Drive.list()).filter(f=>!/_共有_/.test(f.name));
+    if(!fs.length)throw new Error('このアプリで保存したファイルがドライブにありません。ほかのファイルは「ドライブのほかのファイルを選んで読み込む」から選んでください');
+    if(fs.length===1)return loadOwn(fs[0]);drvFiles=fs;return ''}),
+  drvLoadId:e=>{const f=(drvFiles||[]).find(x=>x.id===e.dataset.id);if(f)drvRun('ドライブから読み込んでいます',()=>loadOwn(f))},
+  drvFilesX:()=>{drvFiles=null;render()},
   drvPick:()=>drvRun('ファイルを選んでいます',async()=>{const f=await Drive.pick('読み込むファイルを選ぶ');if(!f)return '';const r=await mergeText(await Drive.read(f.id));return `「${f.name}」を読み込みました（新しい記録${r.add}件）`}),
   shCreate:()=>drvRun('共有ファイルを作っています',async()=>{const d=drv();d.user=(await Drive.whoami()).displayName||'';
     const f=await Drive.create('栽培ノート_共有_'+(db.meta.farmName||'農場')+'.json',driveText(),'栽培ノートの共有データ。仲間を「編集者」に加えてください。');
