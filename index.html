@@ -808,10 +808,19 @@ function download(name,text,type){const u=URL.createObjectURL(new Blob([text],{t
 async function exportText(withPhotos){db.meta.lastExport=new Date().toISOString();const out=Object.assign({},db);
   if(withPhotos){const ps=[];for(const id of usedPhotoIds()){const p=await photoGet(id).catch(()=>null);if(p)ps.push(p)}out.photos=ps}
   return JSON.stringify(out)}
+/* 同じ名前の作業を1つにまとめる（端末ごとに最初に用意した作業が、読み込みで重なるため）。
+   どの端末でも同じものを残すよう、idの小さいほうを残す */
+function dedupTasks(){const now=new Date().toISOString(),by={};let n=0;
+  live('tasks').slice().sort((a,b)=>a.id<b.id?-1:1).forEach(t=>{const k=(t.name||'').trim();
+    if(!by[k]){by[k]=t;return}const keep=by[k];
+    if(!keep.kind&&t.kind){keep.kind=t.kind;keep.updatedAt=now}
+    db.records.forEach(r=>{if(r.type==='work'&&r.itemId===t.id){r.itemId=keep.id;r.updatedAt=now}});
+    t.deleted=true;t.updatedAt=now;n++});
+  return n}
 function merge(inc){let add=0,upd=0;
   COLS.forEach(c=>(inc[c]||[]).forEach(x=>{if(!x||!x.id)return;const i=db[c].findIndex(y=>y.id===x.id);
     if(i<0){db[c].push(x);add++}else if((x.updatedAt||'')>(db[c][i].updatedAt||'')){db[c][i]=x;upd++}}));
-  if(!db.meta.farmName&&inc.meta&&inc.meta.farmName)db.meta.farmName=inc.meta.farmName;return{add,upd}}
+  if(!db.meta.farmName&&inc.meta&&inc.meta.farmName)db.meta.farmName=inc.meta.farmName;dedupTasks();return{add,upd}}
 /* ---------- 帳票（Excel・印刷） ---------- */
 const REPORTS=[['all','生産記録（作付別）'],['work','作業記録（播種・定植を含む）'],['pesticide','農薬使用記録'],['fertilizer','施肥記録'],['harvest','収穫・出荷記録'],
   ['dry','乾燥調製・保管記録（米）'],['stockSum','在庫一覧'],['stockLog','在庫の記録'],['fields','圃場台帳'],['machines','機械・設備台帳'],['check','点検・清掃記録']];
@@ -986,7 +995,7 @@ document.addEventListener('change',async e=>{const el=e.target;
   if(k==='recOn'){db.meta.off=Object.assign({},db.meta.off,{[el.dataset.k]:!el.checked});await save();return}
   sub[k]=el.value;render()});
 $('#modal').addEventListener('click',e=>{if(e.target.id==='modal')closeForm()});
-load().then(()=>{if(!db.meta.seededTasks||!db.meta.seededSow){seedTasks();seedSow();save()}render()});
+load().then(()=>{let ch=false;if(!db.meta.seededTasks||!db.meta.seededSow){seedTasks();seedSow();ch=true}if(dedupTasks())ch=true;if(ch)save();render()});
 if('serviceWorker' in navigator&&(location.protocol==='https:'||location.hostname==='localhost'))navigator.serviceWorker.register('sw.js').catch(()=>{});
 </script>
 </body>
