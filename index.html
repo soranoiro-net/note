@@ -91,7 +91,7 @@ nav button.on{color:var(--gt);font-weight:700;box-shadow:inset 0 3px 0 var(--g)}
 .std .cr{color:var(--mut);font-size:13px}
 .fsearch{background:#f4f6f4;border:1px solid var(--line);border-radius:10px;padding:2px 10px 10px;margin-top:6px}
 .fres .item{padding:8px 10px;margin:4px 0}
-.fnote{font-size:12px;color:var(--mut);line-height:1.5}details.fnote{margin-top:8px}details.fnote summary{cursor:pointer}.fnote p{margin:6px 0}
+.fnote{font-size:12px;color:var(--mut);line-height:1.5}div.fnote{margin-top:10px}.fnote p{margin:6px 0}
 .okmsg button,.warn button{margin-top:6px}
 .frow{display:flex;gap:8px;align-items:flex-end}
 .frow>.fc{flex:1 1 0;min-width:0}
@@ -424,7 +424,7 @@ function recItem(r,showP){
 const FAMIC_DIR='data/famic/';
 const FAMIC_NOTE1='本アプリで提供する農薬の情報は、独立行政法人農林水産消費安全技術センター（FAMIC）が公表する『農薬登録情報ダウンロード』から取得したデータを本サイト（soranoiro.net）が複製・加工したものです。提供情報については正確性を期すように努力しておりますが、その正確性、完全性が保証されているものではありません。実際に農薬を使用する際は、必ず製品ラベルにより登録内容をご確認ください。';
 const FAMIC_NOTE2='本情報の利用により直接又は間接的に生じた利用者又はそれ以外の第三者の損害について、独立行政法人農林水産消費安全技術センターはその内容、方法の如何にかかわらず、一切責任を負いません。';
-const famicNotes=()=>`<details class="fnote"><summary>農薬の情報は、FAMIC「農薬登録情報ダウンロード」のデータを本サイトが複製・加工したものです。使用の際は必ずラベルで確認してください。（出典と注意の全文）</summary><p>${FAMIC_NOTE1}</p><p>${FAMIC_NOTE2}</p></details>`;
+const famicNotes=()=>`<div class="fnote"><p>${FAMIC_NOTE1}</p><p>${FAMIC_NOTE2}</p></div>`;
 let famicIdx=null,famicIdxP=null;
 let famicMeta=null,famicMetaP=null;
 function famicMetaText(){if(famicMeta)return famicMeta.ng?'確認できません（通信できないとき）':`${famicMeta.asOf}時点のデータ（${famicMeta.registrations}剤）`;
@@ -760,10 +760,10 @@ function vData(){
   const nf=live('pesticides').filter(x=>!x.famic).length;
   const M=(act,k,t,d)=>`<button class="menu" data-act="${act}" ${act==='nav'?`data-v="${k}"`:`data-k="${k}"`}><b>${t}</b><span>${d}</span></button>`;
   return `<h2>データ</h2>`+im+proto+backupWarn()
-    +M('nav','report','帳票（Excel・印刷・PDF）','農薬使用記録・施肥記録・台帳などを、規範に合わせた表で出す')
-    +M('dpage','backup','バックアップ・読み込み','データファイルの書き出し（機種変更・故障に備える）と読み込み')
+    +M('nav','report','帳票（Excel・印刷・PDF）','各種記録・台帳を、帳票に出力する')
+    +M('dpage','backup','バックアップ・読み込み','機種変更・故障に備え、定期的にバックアップしてください')
     +M('dpage','out','データ出力・送信','LINE・メールで送る、表計算用（CSV）に書き出す')
-    +M('dpage','drive','Googleドライブ','自分のドライブに保存・読み込み、複数人での共有（使うときだけ）')
+    +M('dpage','drive','Googleドライブ','複数のデバイス、または複数人で共有する')
     +M('dpage','famic','農薬の登録情報',nf?`登録情報と照合していない農薬が${nf}件あります`:'照合状況の確認、出典と注意')
     +`<div class="card"><table><tr><th>保存先</th><td>${mode}</td></tr><tr><th>記録</th><td>${live('records').length}件</td></tr>
     <tr><th>写真</th><td>${usedPhotoIds().length}枚${storeMode==='idb'?'':'（この画面では写真は保存されません）'}</td></tr>
@@ -774,9 +774,8 @@ function vData(){
 function vSettings(){const off=db.meta.off||{};
   return `<h2>設定</h2>
     <label for="farmName2">農場名・生産者名</label><input id="farmName2" data-chg="farm" value="${esc(db.meta.farmName)}" placeholder="画面の上と帳票に表示します">
-    <h3>使う記録</h3><p class="mut">使わない記録をオフにすると、記録するボタンが表示されなくなります。記録済みのデータは消えません。</p>
+    <h3>使う記録・台帳</h3><p class="mut">使わないものをオフにすると、記録するボタンや台帳の在庫のボタンが表示されなくなります。記録済みのデータは消えません。</p>
     ${['ship','dry','check'].map(k=>`<label class="sw"><input type="checkbox" data-chg="recOn" data-k="${k}" ${off[k]?'':'checked'}>${RT[k].label}${k==='dry'&&!hasRice()?'<span class="mut" style="font-size:13px">（品目に米がないときは表示しません）</span>':''}</label>`).join('')}
-    <h3>使う台帳</h3><p class="mut">オフにすると、台帳に在庫のボタンが表示されなくなります。入庫・棚卸の記録は消えません。</p>
     ${[['stockP','農薬の在庫'],['stockF','肥料等の在庫']].map(([k,l])=>`<label class="sw"><input type="checkbox" data-chg="recOn" data-k="${k}" ${off[k]?'':'checked'}>${l}</label>`).join('')}
     <h3>バージョン情報</h3><div class="card"><table><tr><th>アプリ</th><td>栽培ノート</td></tr><tr><th>版</th><td>${APP_VER}</td></tr>
     <tr><th>農薬の登録情報</th><td>${esc(famicMetaText())}</td></tr></table></div>
