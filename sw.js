@@ -1,6 +1,6 @@
 /* 栽培ノート：オフライン用。アプリ本体は端末に保存したものを先に使い、裏で新しい版を取得する。
    農薬の登録情報は通信を優先し、圏外のときだけ保存したものを使う。記録データはここを通らない（端末内のIndexedDB）。 */
-const V='saibai-v13';
+const V='saibai-v14';
 const SHELL=['./','index.html','crop-match.js','manifest.webmanifest','icon-192.png','icon-512.png','apple-touch-icon.png','lib/xlsx.mini.min.js'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(V).then(c=>c.addAll(SHELL)).then(()=>self.skipWaiting()))});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k.startsWith('saibai-')&&k!==V&&k!==V+'-data').map(k=>caches.delete(k)))).then(()=>self.clients.claim()))});

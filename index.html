@@ -99,6 +99,8 @@ nav button.on{color:var(--gt);font-weight:700;box-shadow:inset 0 3px 0 var(--g)}
 .frow label{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .fc{display:flex;gap:8px;align-items:center}.fc .tx{flex:1;min-width:0}.fc .d{font-weight:600;margin-right:8px;color:var(--g)}.fc .d.late{color:var(--warn)}.fc .sm{flex:0 0 auto}
 .cmp td,.cmp th{text-align:left}.cmp2{font-size:13px;width:100%;table-layout:fixed}.cmp2 td{vertical-align:top;border:1px solid var(--line);padding:4px 6px;word-break:break-all}.cmp2 th{background:var(--g2);padding:4px}
+.dsec{border:2px solid var(--g);border-radius:12px;margin:16px 0;overflow:hidden;background:#fff}.dsec h3{margin:0;padding:10px 14px;background:var(--g);color:#fff;font-size:16px}.dsec .dbody{padding:12px 14px}
+.dsec.sh{border-color:#8a5a00}.dsec.sh h3{background:#8a5a00}
 .btnlink{display:block;text-align:center;padding:12px;border:1px solid var(--line);border-radius:10px;color:var(--g);text-decoration:none;background:#fff}
 .wbtn{display:block;margin-top:8px;background:#fff;color:var(--warn);border-color:#e3b46a}
 .okmsg{background:var(--g2);border:1px solid #9fcdbd;color:#00513e;border-radius:10px;padding:10px 12px;margin:8px 0;font-size:14px}
@@ -842,13 +844,16 @@ function vDrive(){const d=drv(),busy=drvBusy,dis=busy?'disabled':'';
   const err=drvErr?`<div class="warn">${esc(drvErr)}</div>`:'',bz=busy?`<div class="okmsg">${esc(busy)}…</div>`:'';
   const own=d.own,sh=d.shared;
   return head+err+bz+`<p class="mut">押したときだけGoogleにログインし、あなた自身のGoogleドライブとこの端末の間でデータをやり取りします。提供者には届きません。このアプリが扱えるのは、アプリで作ったファイルと、あなたが選んだファイルだけです。写真は送らず、撮った端末に残ります。</p>
-    <h3>自分のドライブに保存（バックアップ）</h3>
-    ${own?`<p>保存先：${esc(own.name)}<br><span class="mut">最後の保存：${esc(fmtAt(own.at))}</span></p>`:'<p class="mut">まだ保存していません。</p>'}
+    <section class="dsec"><h3>自分のドライブに保存</h3><div class="dbody">
+    <p class="mut" style="margin-top:0">バックアップと、自分の端末どうし（スマホとパソコンなど）でデータを合わせるときに使います。</p>
+    ${own?`<p>保存先：${esc(own.name)}<br><span class="mut">最後の保存：${esc(fmtAt(own.at))}</span></p>`:'<p class="mut">保存先はまだありません。「ドライブに保存」で作るか、ほかの端末で保存したファイルを「ドライブから読み込む」で選んでください。</p>'}
     <button class="pri" data-act="drvSave" style="width:100%;margin-bottom:8px" ${dis}>ドライブに保存</button>
     <button data-act="drvLoad" style="width:100%;margin-bottom:8px" ${dis}>ドライブから読み込む（今のデータと統合）</button>
     ${drvFiles?`<div class="card"><p style="margin:0 0 6px">読み込むファイルを選んでください（このアプリで保存したファイル）</p>${drvFiles.map(f=>`<button class="item" data-act="drvLoadId" data-id="${esc(f.id)}"><div class="t">${esc(f.name)}</div><div class="s">${esc(fmtAt(f.modifiedTime))}${f.lastModifyingUser?'　'+esc(f.lastModifyingUser.displayName||''):''}</div></button>`).join('')}<button class="sm" data-act="drvFilesX">閉じる</button></div>`:''}
-    <button data-act="drvPick" style="width:100%" ${dis}>ドライブのほかのファイルを選んで読み込む</button>
-    <h3>複数人で記録する（共有）</h3>
+    ${own?`<button class="sm" data-act="drvOwnOff" ${dis}>保存先を切り替える</button>
+    <p class="mut">外したあと「ドライブから読み込む」で別のファイルを選ぶか、「ドライブに保存」で新しいファイルを作ります。この端末の記録とドライブのファイルは消えません。</p>`:''}
+    </div></section>
+    <section class="dsec sh"><h3>複数人で記録する（共有）</h3><div class="dbody">
     ${sh?`<div class="card"><table><tr><th>共有ファイル</th><td>${esc(sh.name||'')}</td></tr><tr><th>最後の同期</th><td>${esc(fmtAt(sh.at))||'まだ'}</td></tr><tr><th>入力者の名前</th><td>${esc(d.user||'（最初の同期で取得）')}</td></tr></table></div>
       <button class="pri" data-act="shSync" style="width:100%;margin-bottom:8px" ${dis}>同期する</button>
       <p class="mut">ドライブの最新の記録を読み込んで統合し、この端末の記録を書き戻します。記録を付ける前と後に押してください。ほぼ同時に同期すると、まれに変更が反映されないことがあります。</p>
@@ -860,7 +865,9 @@ function vDrive(){const d=drv(),busy=drvBusy,dis=busy?'disabled':'';
       <button class="sm" data-act="shOff" style="margin-top:10px" ${dis}>この端末の共有をやめる</button>`
     :`<p class="mut">同じ農場の記録を2〜5人で付けるときに使います。代表の人が共有ファイルを作り、ドライブで仲間を「編集者」に加えます。仲間は「共有ファイルを選ぶ」でそのファイルを選びます。</p>
       <button class="pri" data-act="shCreate" style="width:100%;margin-bottom:8px" ${dis}>共有ファイルを作る（代表の人）</button>
-      <button data-act="shPick" style="width:100%" ${dis}>共有ファイルを選ぶ（仲間）</button>`}
+      <button data-act="shPick" style="width:100%" ${dis}>共有ファイルを選ぶ（仲間）</button>
+      <p class="mut">「共有ファイルを選ぶ」は、会社や団体のGoogleアカウント（Google Workspace）では使えないことがあります。その場合は、個人のGoogleアカウント（Gmail）で共有してください。</p>`}
+    </div></section>
     <p class="mut" style="margin-top:14px">会社や団体のGoogleアカウント（Google Workspace）は、管理者の設定により使えないことがあります。<a href="privacy.html" target="_blank" rel="noopener">プライバシーポリシー</a></p>
     ${Drive.signedIn()?`<button class="sm" data-act="drvOut" ${dis}>Googleからログアウト</button>`:''}`}
 
@@ -984,6 +991,7 @@ const ACT={
       drvMembers=(await Drive.members(drv().shared.id)).filter(m=>m.type==='user');return em+' を編集者に加えました'})},
   shDel:e=>{const m=(drvMembers||[]).find(x=>x.id===e.dataset.id);if(!m||!confirm((m.displayName||m.emailAddress)+' を共有から外しますか？'))return;
     drvRun('共有から外しています',async()=>{await Drive.removeMember(drv().shared.id,m.id);drvMembers=drvMembers.filter(x=>x.id!==m.id);return '共有から外しました'})},
+  drvOwnOff:()=>{if(!confirm('今の保存先とのつながりを外しますか？（この端末の記録とドライブのファイルは消えません）'))return;delete drv().own;drvFiles=null;save();render()},
   drvFilesX:()=>{drvFiles=null;render()},
   drvPick:()=>drvRun('ファイルを選んでいます',async()=>{const f=await Drive.pick('読み込むファイルを選ぶ');if(!f)return '';const r=await mergeText(await Drive.read(f.id));return `「${f.name}」を読み込みました（新しい記録${r.add}件）`}),
   shCreate:()=>drvRun('共有ファイルを作っています',async()=>{const d=drv();d.user=(await Drive.whoami()).displayName||'';
