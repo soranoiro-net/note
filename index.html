@@ -99,6 +99,7 @@ nav button.on{color:var(--gt);font-weight:700;box-shadow:inset 0 3px 0 var(--g)}
 .frow label{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .fc{display:flex;gap:8px;align-items:center}.fc .tx{flex:1;min-width:0}.fc .d{font-weight:600;margin-right:8px;color:var(--g)}.fc .d.late{color:var(--warn)}.fc .sm{flex:0 0 auto}
 .cmp td,.cmp th{text-align:left}.cmp2{font-size:13px;width:100%;table-layout:fixed}.cmp2 td{vertical-align:top;border:1px solid var(--line);padding:4px 6px;word-break:break-all}.cmp2 th{background:var(--g2);padding:4px}
+.btnlink{display:block;text-align:center;padding:12px;border:1px solid var(--line);border-radius:10px;color:var(--g);text-decoration:none;background:#fff}
 .wbtn{display:block;margin-top:8px;background:#fff;color:var(--warn);border-color:#e3b46a}
 .okmsg{background:var(--g2);border:1px solid #9fcdbd;color:#00513e;border-radius:10px;padding:10px 12px;margin:8px 0;font-size:14px}
 .acts .pri{flex:2}
@@ -182,7 +183,7 @@ function askPersist(){try{if(navigator.storage&&navigator.storage.persist)naviga
 /* ---------- データ操作 ---------- */
 const live=c=>db[c].filter(x=>!x.deleted);
 const byId=(c,id)=>db[c].find(x=>x.id===id);
-function upsert(c,o){o.updatedAt=new Date().toISOString();if(!o.id){o.id=uid();db[c].push(o)}else{const i=db[c].findIndex(x=>x.id===o.id);if(i>=0)db[c][i]=o;else db[c].push(o)}return o}
+function upsert(c,o){o.updatedAt=new Date().toISOString();if(c==='records'&&db.meta.drive&&db.meta.drive.shared&&db.meta.drive.user)o.by=db.meta.drive.user;if(!o.id){o.id=uid();db[c].push(o)}else{const i=db[c].findIndex(x=>x.id===o.id);if(i>=0)db[c][i]=o;else db[c].push(o)}return o}
 function removeItem(c,id){const x=byId(c,id);if(x){x.deleted=true;x.updatedAt=new Date().toISOString()}}
 function plantingLabel(p){if(!p)return'（作付なし）';const f=byId('fields',p.fieldId),c=byId('crops',p.cropId);
   return (f?f.name:'圃場未設定')+'｜'+(c?c.name+(c.variety?'（'+c.variety+'）':''):'品目未設定')+(p.season?'｜'+p.season:'')}
@@ -415,7 +416,7 @@ function recItem(r,showP){
   const yr=(r.date||'').slice(0,4),d=r.date?(yr!==String(new Date().getFullYear())?yr+'/':'')+fmtMD(r.date):'';
   return `<button class="item" data-act="editRec" data-id="${r.id}"><div class="ri"><div class="tx">
     <div><span class="tag ${t.tag}">${t.label}</span>${isNursery(r)?'<span class="tag w">育苗期</span>':''}<span class="d">${esc(d)}</span>${showP&&r.plantingId?`<span class="pl">${esc((p=>{if(!p)return '';const f=byId('fields',p.fieldId),c=byId('crops',p.cropId);return (f?f.name:'')+'｜'+(c?c.name:'')})(byId('plantings',r.plantingId)))}</span>`:''}</div>
-    <div>${esc(recSummary(r))}${r.memo?`<span class="pl">　${esc(r.memo)}</span>`:''}</div></div>
+    <div>${esc(recSummary(r))}${r.memo?`<span class="pl">　${esc(r.memo)}</span>`:''}${r.by&&db.meta.drive&&db.meta.drive.shared?`<span class="pl">　入力：${esc(r.by)}</span>`:''}</div></div>
     ${ph.length?`<div class="ph2">${th?`<img src="${thumbs[th]}" alt="">`:''}${ph.length>1||!th?`<span class="n">${ph.length}枚</span>`:''}</div>`:''}</div></button>`;
 }
 
@@ -679,7 +680,7 @@ function backupWarn(){
   if(n&&(!le||Date.now()-new Date(le).getTime()>30*864e5))return `<div class="warn">${le?'最後の書き出しから30日以上たっています。':'まだ一度もデータを書き出していません。'}「データ」→「バックアップ・読み込み」から書き出してください。<button class="sm wbtn" data-act="goBackup">バックアップ・読み込みを開く</button></div>`;
   return '';
 }
-const APP_VER='試作4（2026年11月28日）';
+const APP_VER='試作5（2026年11月28日）';
 const recOff=k=>!!((db.meta.off||{})[k]);
 const recOn=k=>!recOff(k)&&!(RT[k].rice&&!hasRice());
 const hasRice=()=>live('crops').some(c=>{const it=cmItemFor(c.name);return it&&it.name==='米'});
@@ -750,6 +751,7 @@ function vData(){
     <p class="mut">受け取った人には、ファイルを開かずに、栽培ノートの「データ」→「バックアップ・読み込み」から読み込むよう伝えてください。開いて文字を書き換えると読み込めなくなります。</p>`:'<p class="mut">この端末のブラウザでは共有の機能が使えません。「バックアップ・読み込み」で書き出したファイルを、メールなどに添付して送ってください。</p>'}
     <h3>表計算用データ出力（CSV）</h3><p class="mut">Excelなどで自由に集計したいときに使います。決まった様式の帳票は「帳票」から出せます。</p>
     <button data-act="exportCsv" style="width:100%;margin-bottom:8px">記録の一覧をCSVで書き出す</button><button data-act="exportStockCsv" style="width:100%">在庫の記録をCSVで書き出す</button>`;
+  if(pg==='drive'){if(!(typeof Drive!=='undefined')&&!drvErr)loadDrive().then(render,e=>{drvErr='Googleに接続できません。通信できる状態で開き直してください。';render()});return vDrive()}
   if(pg==='famic')return back+`<h2>農薬の登録情報</h2>`+im+`
     <p>農薬の照合状況　<span class="mk y" style="margin:0">✔：${live('pesticides').filter(x=>x.famic).length}件</span>　<span class="mk n" style="margin:0">✘：${live('pesticides').filter(x=>!x.famic).length}件</span></p><p class="mut">✘の農薬は、台帳で「登録情報から探す」を使うと照合できます。</p>
     <button data-act="checkAll" style="width:100%">台帳の農薬の登録内容をまとめて確認する</button>${famicNotes()}`;
@@ -761,6 +763,7 @@ function vData(){
     +M('nav','report','帳票（Excel・印刷・PDF）','農薬使用記録・施肥記録・台帳などを、規範に合わせた表で出す')
     +M('dpage','backup','バックアップ・読み込み','データファイルの書き出し（機種変更・故障に備える）と読み込み')
     +M('dpage','out','データ出力・送信','LINE・メールで送る、表計算用（CSV）に書き出す')
+    +M('dpage','drive','Googleドライブ','自分のドライブに保存・読み込み、複数人での共有（使うときだけ）')
     +M('dpage','famic','農薬の登録情報',nf?`登録情報と照合していない農薬が${nf}件あります`:'照合状況の確認、出典と注意')
     +`<div class="card"><table><tr><th>保存先</th><td>${mode}</td></tr><tr><th>記録</th><td>${live('records').length}件</td></tr>
     <tr><th>写真</th><td>${usedPhotoIds().length}枚${storeMode==='idb'?'':'（この画面では写真は保存されません）'}</td></tr>
@@ -776,7 +779,8 @@ function vSettings(){const off=db.meta.off||{};
     <h3>使う台帳</h3><p class="mut">オフにすると、台帳に在庫のボタンが表示されなくなります。入庫・棚卸の記録は消えません。</p>
     ${[['stockP','農薬の在庫'],['stockF','肥料等の在庫']].map(([k,l])=>`<label class="sw"><input type="checkbox" data-chg="recOn" data-k="${k}" ${off[k]?'':'checked'}>${l}</label>`).join('')}
     <h3>バージョン情報</h3><div class="card"><table><tr><th>アプリ</th><td>栽培ノート</td></tr><tr><th>版</th><td>${APP_VER}</td></tr>
-    <tr><th>農薬の登録情報</th><td>${esc(famicMetaText())}</td></tr></table></div>`;
+    <tr><th>農薬の登録情報</th><td>${esc(famicMetaText())}</td></tr></table></div>
+    <a href="privacy.html" class="btnlink" target="_blank" rel="noopener">プライバシーポリシー・利用条件</a>`;
 }
 function render(){
   $('#app').innerHTML=({home:vHome,records:vRecords,plantings:vPlantings,master:vMaster,data:vData,report:vReport,settings:vSettings}[view])();
@@ -796,9 +800,10 @@ const ICONS={
   leaf:'<path d="M5 19C5 10 10 5 20 4c-1 10-6 15-15 15z"/><path d="M5 19l8-8"/>',
   cal:'<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M8 3v4M16 3v4"/>',
   cmp:'<path d="M6 20V10M12 20V4M18 20v-7"/>',
+  cloud:'<path d="M7 18a4 4 0 0 1-.5-8A6 6 0 0 1 18 9a4.5 4.5 0 0 1-.5 9z"/>',
   gear:'<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/>',
   db:'<ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v12c0 1.7 3.1 3 7 3s7-1.3 7-3V6M5 12c0 1.7 3.1 3 7 3s7-1.3 7-3"/>'};
-const H_ICON=[['作業の目安','cal'],['前年','cmp'],['記録する','pen'],['最近','clock'],['記録の一覧','list'],['作付','sprout'],['台帳','book'],['帳票','doc'],['バックアップ','save'],['データ出力','send'],['農薬の登録','leaf'],['設定','gear'],['データ','db']];
+const H_ICON=[['Googleドライブ','cloud'],['作業の目安','cal'],['前年','cmp'],['記録する','pen'],['最近','clock'],['記録の一覧','list'],['作付','sprout'],['台帳','book'],['帳票','doc'],['バックアップ','save'],['データ出力','send'],['農薬の登録','leaf'],['設定','gear'],['データ','db']];
 function headIcons(){document.querySelectorAll('#app h2').forEach(h=>{const t=h.textContent;const f=H_ICON.find(([k])=>t.startsWith(k));if(f)h.insertAdjacentHTML('afterbegin',`<span class="ic"><svg viewBox="0 0 24 24">${ICONS[f[1]]}</svg></span>`)})}
 let toastT;function toast(m){const t=$('#toast');t.textContent=m;t.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>t.hidden=true,3200)}
 
@@ -808,6 +813,51 @@ function download(name,text,type){const u=URL.createObjectURL(new Blob([text],{t
 async function exportText(withPhotos){db.meta.lastExport=new Date().toISOString();const out=Object.assign({},db);
   if(withPhotos){const ps=[];for(const id of usedPhotoIds()){const p=await photoGet(id).catch(()=>null);if(p)ps.push(p)}out.photos=ps}
   return JSON.stringify(out)}
+/* ---------- Googleドライブ（オプション） ---------- */
+let drvBusy='',drvErr='',drvLoadP=null;
+const drv=()=>db.meta.drive||(db.meta.drive={});
+function loadDrive(){if((typeof Drive!=='undefined'))return Promise.resolve();if(!drvLoadP)drvLoadP=new Promise((res,rej)=>{const sc=document.createElement('script');sc.src='drive.js';sc.onload=res;sc.onerror=()=>{drvLoadP=null;rej(new Error('通信できません'))};document.head.appendChild(sc)})
+  .then(()=>Drive.ready()?Drive.init():null);return drvLoadP}
+function driveText(){const out=Object.assign({},db,{meta:Object.assign({},db.meta)});delete out.meta.drive;delete out.meta.off;return JSON.stringify(out)}
+function parseData(t){const inc=JSON.parse((t||'').replace(/^﻿/,''));if(!inc||inc.app!=='seisan-kiroku')throw new Error('栽培ノートのデータファイルではありません');return inc}
+async function mergeText(t){const inc=parseData(t),before=live('records').length,r=merge(inc);await save();return {add:live('records').length-before,upd:r.upd}}
+const fmtAt=s=>s?new Date(s).toLocaleString('ja-JP',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}):'';
+async function drvRun(label,fn){if(drvBusy)return;drvBusy=label;drvErr='';render();
+  try{await Drive.token();const m=await fn();drvBusy='';await save();render();if(m)toast(m)}
+  catch(err){drvBusy='';drvErr=(err&&err.message)||String(err);render()}}
+async function syncShared(){const d=drv(),sh=d.shared;let res=null;
+  if(!d.user)try{d.user=(await Drive.whoami()).displayName||''}catch(e){}
+  for(let i=0;i<3;i++){
+    const m=await Drive.meta(sh.id);if(m.trashed)throw new Error('共有ファイルがゴミ箱に入っています');
+    const r=await mergeText(await Drive.read(sh.id));res=res||r;if(i)res.add+=r.add;
+    const m1=await Drive.meta(sh.id);if(m1.version!==m.version)continue; /* 読む間にほかの人が保存した：読み直して統合し直す */
+    const up=await Drive.update(sh.id,driveText());sh.version=up.version;sh.at=new Date().toISOString();sh.name=up.name;return res
+  }
+  throw new Error('ほかの人の同期と重なりました。少し待ってから、もう一度「同期する」を押してください')}
+function vDrive(){const d=drv(),busy=drvBusy,dis=busy?'disabled':'';
+  const head=`<button class="sm" data-act="dpage" data-k="">← データに戻る</button><h2>Googleドライブ</h2>`;
+  if(!(typeof Drive!=='undefined'))return head+(drvErr?`<div class="warn">${esc(drvErr)}</div>`:'<p class="mut">準備しています…</p>');
+  if(!Drive.ready())return head+'<div class="warn">準備中です。提供者側でGoogleの設定が終わると使えるようになります。</div>';
+  const err=drvErr?`<div class="warn">${esc(drvErr)}</div>`:'',bz=busy?`<div class="okmsg">${esc(busy)}…</div>`:'';
+  const own=d.own,sh=d.shared;
+  return head+err+bz+`<p class="mut">押したときだけGoogleにログインし、あなた自身のGoogleドライブとこの端末の間でデータをやり取りします。提供者には届きません。このアプリが扱えるのは、アプリで作ったファイルと、あなたが選んだファイルだけです。写真は送らず、撮った端末に残ります。</p>
+    <h3>自分のドライブに保存（バックアップ）</h3>
+    ${own?`<p>保存先：${esc(own.name)}<br><span class="mut">最後の保存：${esc(fmtAt(own.at))}</span></p>`:'<p class="mut">まだ保存していません。</p>'}
+    <button class="pri" data-act="drvSave" style="width:100%;margin-bottom:8px" ${dis}>ドライブに保存</button>
+    ${own?`<button data-act="drvLoad" style="width:100%;margin-bottom:8px" ${dis}>ドライブから読み込む（今のデータと統合）</button>`:''}
+    <button data-act="drvPick" style="width:100%" ${dis}>ドライブのほかのファイルを選んで読み込む</button>
+    <h3>複数人で記録する（共有）</h3>
+    ${sh?`<div class="card"><table><tr><th>共有ファイル</th><td>${esc(sh.name||'')}</td></tr><tr><th>最後の同期</th><td>${esc(fmtAt(sh.at))||'まだ'}</td></tr><tr><th>入力者の名前</th><td>${esc(d.user||'（最初の同期で取得）')}</td></tr></table></div>
+      <button class="pri" data-act="shSync" style="width:100%;margin-bottom:8px" ${dis}>同期する</button>
+      <p class="mut">ドライブの最新の記録を読み込んで統合し、この端末の記録を書き戻します。記録を付ける前と後に押してください。ほぼ同時に同期すると、まれに変更が反映されないことがあります。</p>
+      <a href="https://drive.google.com/file/d/${encodeURIComponent(sh.id)}/view" target="_blank" rel="noopener" class="btnlink">ドライブで共有の設定を開く</a>
+      <button class="sm" data-act="shOff" style="margin-top:10px" ${dis}>この端末の共有をやめる</button>`
+    :`<p class="mut">同じ農場の記録を2〜5人で付けるときに使います。代表の人が共有ファイルを作り、ドライブで仲間を「編集者」に加えます。仲間は「共有ファイルを選ぶ」でそのファイルを選びます。</p>
+      <button class="pri" data-act="shCreate" style="width:100%;margin-bottom:8px" ${dis}>共有ファイルを作る（代表の人）</button>
+      <button data-act="shPick" style="width:100%" ${dis}>共有ファイルを選ぶ（仲間）</button>`}
+    <p class="mut" style="margin-top:14px">会社や団体のGoogleアカウント（Google Workspace）は、管理者の設定により使えないことがあります。<a href="privacy.html" target="_blank" rel="noopener">プライバシーポリシー</a></p>
+    ${Drive.signedIn()?`<button class="sm" data-act="drvOut" ${dis}>Googleからログアウト</button>`:''}`}
+
 /* 同じ名前の作業を1つにまとめる（端末ごとに最初に用意した作業が、読み込みで重なるため）。
    どの端末でも同じものを残すよう、idの小さいほうを残す */
 function dedupTasks(){const now=new Date().toISOString(),by={};let n=0;
@@ -912,6 +962,20 @@ const ACT={
   recType:e=>{sub.type=e.dataset.k;render()},
   settings:()=>{if(view==='settings'){view=sub.prevView||'home'}else{sub.prevView=view;view='settings'}render();window.scrollTo(0,0)},
   fcRec:e=>{const r=byId('records',e.dataset.id);if(!r)return;const b=Object.assign({},r,{plantingId:e.dataset.pid});delete b.splitOf;delete b.lot;delete b.memo;recordForm(r.type,b,true)},
+  drvSave:()=>drvRun('ドライブに保存しています',async()=>{const d=drv(),t=driveText();let f=null;
+    if(d.own)try{f=await Drive.update(d.own.id,t)}catch(e){if(!/見つかりません/.test(e.message))throw e}
+    if(!f)f=await Drive.create('栽培ノート_'+(db.meta.farmName||'データ')+'.json',t,'栽培ノートのデータ（バックアップ）');
+    d.own={id:f.id,name:f.name,at:new Date().toISOString()};db.meta.lastExport=d.own.at;return 'ドライブに保存しました'}),
+  drvLoad:()=>drvRun('ドライブから読み込んでいます',async()=>{const r=await mergeText(await Drive.read(drv().own.id));return `読み込みました（新しい記録${r.add}件、更新${r.upd}件）`}),
+  drvPick:()=>drvRun('ファイルを選んでいます',async()=>{const f=await Drive.pick('読み込むファイルを選ぶ');if(!f)return '';const r=await mergeText(await Drive.read(f.id));return `「${f.name}」を読み込みました（新しい記録${r.add}件）`}),
+  shCreate:()=>drvRun('共有ファイルを作っています',async()=>{const d=drv();d.user=(await Drive.whoami()).displayName||'';
+    const f=await Drive.create('栽培ノート_共有_'+(db.meta.farmName||'農場')+'.json',driveText(),'栽培ノートの共有データ。仲間を「編集者」に加えてください。');
+    d.shared={id:f.id,name:f.name,version:f.version,at:new Date().toISOString()};return '共有ファイルを作りました。「ドライブで共有の設定を開く」から仲間を編集者に加えてください'}),
+  shPick:()=>drvRun('共有ファイルを選んでいます',async()=>{const f=await Drive.pick('共有ファイルを選ぶ');if(!f)return '';
+    parseData(await Drive.read(f.id));const d=drv();d.shared={id:f.id,name:f.name};const r=await syncShared();return `共有ファイルにつなぎました（新しい記録${r.add}件）`}),
+  shSync:()=>drvRun('同期しています',async()=>{const r=await syncShared();return `同期しました（新しい記録${r.add}件）`}),
+  shOff:()=>{if(!confirm('この端末の共有をやめますか？（記録はこの端末に残ります。ドライブのファイルは消えません）'))return;delete drv().shared;save();render()},
+  drvOut:()=>{Drive.signOut();render()},
   goBackup:()=>{view='data';sub.dpage='backup';importMsg=null;render();window.scrollTo(0,0)},
   cmpOpen:()=>{sub.cmpOpen=!sub.cmpOpen;render()},
   newFromPrev:e=>{const p=byId('plantings',e.dataset.id);if(p)newFromPrev(p)},
