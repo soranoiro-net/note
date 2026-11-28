@@ -13,7 +13,12 @@
 *{box-sizing:border-box}
 html,body{margin:0}
 body{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic UI","Noto Sans JP",Meiryo,sans-serif;color:var(--ink);background:var(--bg);font-size:16px;line-height:1.5;padding-bottom:76px}
-header{background:var(--g);color:#fff;padding:12px 16px}
+header{background:var(--g);color:#fff;padding:10px 12px 10px 16px;display:flex;align-items:center;gap:10px}
+header h1{flex:0 0 auto}#farmHd{flex:1;min-width:0;font-size:14px;opacity:.9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#setBtn{flex:0 0 auto;background:transparent;color:#fff;border:1px solid rgba(255,255,255,.6);min-height:36px;padding:4px 10px;font-size:14px}
+.menu{display:block;width:100%;text-align:left;margin:0 0 10px;padding:14px 16px}.menu b{display:block;font-size:17px}.menu span{display:block;font-size:13px;color:var(--mut);font-weight:400;margin-top:2px}
+.sw{display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--line);font-size:16px}.sw input{width:24px;height:24px;flex:0 0 auto}
+input[type=checkbox]{accent-color:var(--g)}
 header h1{margin:0;font-size:18px;font-weight:600}
 header small{font-weight:400;opacity:.8;margin-left:6px;font-size:13px}
 main{max-width:760px;margin:0 auto;padding:14px}
@@ -73,7 +78,8 @@ nav button.on{color:var(--gt);font-weight:700;box-shadow:inset 0 3px 0 var(--g)}
 .mk{font-size:13px;font-weight:600;margin-left:8px;white-space:nowrap}.mk.y{color:var(--gt)}.mk.n{color:var(--red)}
 .rep h3{margin:16px 0 4px;color:var(--ink);font-size:16px}.rmeta{font-size:13px;color:var(--mut);margin:0 0 8px}
 .tw{overflow-x:auto}.rt{font-size:13px;white-space:nowrap}.rt th{background:var(--g2)}.rt td,.rt th{border:1px solid var(--line);padding:4px 6px}
-@media print{@page{size:A4 landscape;margin:10mm}body{background:#fff;padding:0}header,nav,.noprint,#toast{display:none!important}main{max-width:none;padding:0}
+@page{size:A4 landscape;margin:10mm}
+@media print{body{background:#fff;padding:0}header,nav,.noprint,#toast{display:none!important}main{max-width:none;padding:0}
   .tw{overflow:visible}.rt{font-size:9pt;white-space:normal;width:100%}.rt thead{display:table-header-group}.rt tr{page-break-inside:avoid}.rep h3{margin-top:0}}
 .std{border:1px solid var(--line);border-radius:10px;padding:8px 10px;margin:8px 0 0;background:#fff;font-size:14px;line-height:1.45}
 .std.ng{border-color:#e0a49c;background:#fff6f5}
@@ -110,7 +116,7 @@ label.btn{display:inline-flex;align-items:center;justify-content:center;color:va
 </style>
 </head>
 <body>
-<header><h1>栽培ノート<small>試作3</small></h1></header>
+<header><h1>栽培ノート<small>試作3</small></h1><span id="farmHd"></span><button id="setBtn" data-act="nav" data-v="settings" aria-label="設定">⚙ 設定</button></header>
 <main id="app"></main>
 <nav id="nav"></nav>
 <div id="modal" class="modal" hidden></div>
@@ -565,8 +571,8 @@ function stockForm(kind,x){const isNew=!x;
   openForm({title:(kind==='in'?'入庫':'棚卸')+(isNew?'を記録':'の修正'),defs,values:vals,submitLabel:'記録する',
     onSave:v=>{const [col,itemId]=v.mat.split(':');delete v.mat;upsert('stock',Object.assign({},x||{},v,{kind,col,itemId}));sub.stockMat=col+':'+itemId;toast('記録しました')},
     onDelete:isNew?null:()=>removeItem('stock',x.id)})}
-function vStock(){
-  const mats=[...live('pesticides').map(x=>['pesticides',x]),...live('fertilizers').map(x=>['fertilizers',x])];
+function vStock(col){
+  const mats=live(col).map(x=>[col,x]).sort((a,b)=>(a[1].name||'').localeCompare(b[1].name||'','ja'));
   const sel=sub.stockMat;
   const rows=mats.map(([c,x])=>{const st=stockOf(c,x.id),key=c+':'+x.id,open=sel===key;
     return `<button class="item" data-act="stockMat" data-k="${key}"><div class="t">${esc(x.name)}　<span style="color:${st.qty<0?'var(--red)':'var(--ink)'}">${st.has?'在庫 '+st.qty+esc(st.unit):'記録なし'}</span></div>
@@ -576,7 +582,7 @@ function vStock(){
       +(open?`<div class="card"><table><tr><th>日付</th><th>内容</th><th class="n">数量</th><th class="n">在庫</th></tr>${st.hist.slice().reverse().map(e=>`<tr ${e.src?`data-act="editStock" data-id="${e.src.id}" style="cursor:pointer"`:''}><td>${fmtMD(e.date)}</td><td>${e.kind==='in'?'入庫'+(e.src.supplier?'（'+esc(e.src.supplier)+'）':''):e.kind==='count'?'棚卸':'使用：'+esc(plantingLabel(byId('plantings',e.rec.plantingId)))}</td><td class="n">${e.kind==='use'?'-':''}${e.qty}${esc(e.unit||'')}</td><td class="n">${e.skip?'計算外':e.after+esc(st.unit)}</td></tr>`).join('')||'<tr><td colspan="4" class="mut">記録はまだありません</td></tr>'}</table>
       <p class="mut">入庫・棚卸の行を押すと修正できます。使用は農薬使用・施肥の記録から自動で入ります。</p></div>`:'')}).join('');
   return `<div class="row" style="margin:10px 0"><button class="pri" data-act="newStock" data-kind="in">＋ 入庫を記録</button><button data-act="newStock" data-kind="count">＋ 棚卸を記録</button></div>
-    ${mats.length?rows:'<p class="mut">台帳の「農薬」「肥料等」に資材を登録すると、ここに在庫が出ます。</p>'}
+    ${mats.length?rows:`<p class="mut">台帳の「${col==='pesticides'?'農薬':'肥料等'}」に資材を登録すると、ここに在庫が出ます。</p>`}
     <p class="mut">在庫＝入庫した量－使った量（農薬は「使った薬量」、肥料は「施肥量」）。棚卸で実際の量を記録すると、その日の在庫をその量に合わせ、差を表示します。</p>`}
 function stockCsv(){const q=v=>{v=v==null?'':String(v);return /[",\r\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v};const out=[['資材','区分','日付','内容','数量','単位','在庫（この後）','在庫の単位','購入先','作付','メモ'].join(',')];
   [...live('pesticides').map(x=>['pesticides',x]),...live('fertilizers').map(x=>['fertilizers',x])].forEach(([c,x])=>{const st=stockOf(c,x.id);
@@ -588,22 +594,24 @@ const NAV=[['home','ホーム'],['records','記録'],['plantings','作付'],['ma
 function backupWarn(){
   const n=live('records').length,le=db.meta.lastExport;
   if(storeMode==='mem')return '<div class="warn">この画面では端末内に保存できません。閉じる前に「データ」から書き出してください。</div>';
-  if(n&&(!le||Date.now()-new Date(le).getTime()>30*864e5))return `<div class="warn">${le?'最後の書き出しから30日以上たっています。':'まだ一度もデータを書き出していません。'}「データ」からバックアップを書き出してください。</div>`;
+  if(n&&(!le||Date.now()-new Date(le).getTime()>30*864e5))return `<div class="warn">${le?'最後の書き出しから30日以上たっています。':'まだ一度もデータを書き出していません。'}「データ」→「バックアップ・読み込み」から書き出してください。</div>`;
   return '';
 }
+const recOff=k=>!!((db.meta.off||{})[k]);
+const recOn=k=>!recOff(k)&&!(RT[k].rice&&!hasRice());
 const hasRice=()=>live('crops').some(c=>{const it=cmItemFor(c.name);return it&&it.name==='米'});
 const addBtns=inPl=>`<div class="row">${Object.keys(RT).filter(k=>!RT[k].small).map(k=>`<button class="pri big" data-act="newRec" data-type="${k}">＋ ${RT[k].label}</button>`).join('')}</div>
-  <div class="row" style="margin-top:8px">${Object.keys(RT).filter(k=>RT[k].small&&!(RT[k].rice&&!hasRice())&&!(inPl&&RT[k].noPlanting)).map(k=>`<button class="sm" data-act="newRec" data-type="${k}">＋ ${RT[k].label}</button>`).join('')}</div>`;
+  <div class="row" style="margin-top:8px">${Object.keys(RT).filter(k=>RT[k].small&&recOn(k)&&!(inPl&&RT[k].noPlanting)).map(k=>`<button class="sm" data-act="newRec" data-type="${k}">＋ ${RT[k].label}</button>`).join('')}</div>`;
 function vHome(){
   const recs=sortedRecs().slice(0,8);
-  const due=maintDue();
-  return (db.meta.farmName?`<p class="mut">${esc(db.meta.farmName)}</p>`:'')+backupWarn()+(due.length?`<div class="warn">点検の時期です：${due.map(([m,i])=>esc(m.name)+'（'+fmtMD(i.next)+'）').join('、')}</div>`:'')+`<h2>記録する</h2>`+addBtns()
+  const due=recOff('check')?[]:maintDue();
+  return backupWarn()+(due.length?`<div class="warn">点検の時期です：${due.map(([m,i])=>esc(m.name)+'（'+fmtMD(i.next)+'）').join('、')}</div>`:'')+`<h2>記録する</h2>`+addBtns()
     +(live('plantings').length?'':'<div class="warn">最初に「台帳」で圃場・品目・作付を登録してください。農薬・肥料・作業者は、記録の入力中に追加できます。</div>')
     +`<h2>最近の記録</h2>`+(recs.length?recs.map(r=>recItem(r,true)).join(''):'<p class="mut">記録はまだありません。</p>');
 }
 function vRecords(){
   let recs=sortedRecs();if(sub.type)recs=recs.filter(r=>r.type===sub.type);if(sub.planting)recs=recs.filter(r=>r.plantingId===sub.planting);
-  const types=Object.keys(RT).filter(k=>!(RT[k].rice&&!hasRice()));
+  const types=Object.keys(RT).filter(k=>recOn(k)||live('records').some(r=>r.type===k));
   return `<h2>記録の一覧　<span class="mut" style="font-weight:400">${recs.length}件</span></h2>
     <select data-chg="planting"><option value="">すべての作付</option>${live('plantings').map(p=>`<option value="${p.id}" ${sub.planting===p.id?'selected':''}>${esc(plantingLabel(p))}</option>`).join('')}</select>
     <div class="tabs" style="margin-top:8px"><button class="tab ${!sub.type?'on':''}" data-act="recType" data-k="">すべて</button>${types.map(k=>`<button class="tab ${sub.type===k?'on':''}" data-act="recType" data-k="${k}">${RT[k].label}</button>`).join('')}</div>
@@ -624,9 +632,12 @@ function vPlantings(){
     +addBtns(true)+`<h3>作業の履歴（新しい順）</h3>`+(recs.length?recs.map(r=>recItem(r,false)).join(''):'<p class="mut">この作付の記録はまだありません。</p>');
 }
 function vMaster(){
+  if(sub.master==='stock')sub.master='stockP';
   const k=sub.master,head=`<h2>台帳</h2><div class="frow" style="align-items:center"><label for="farmName" style="margin:0;flex:0 0 auto;color:var(--ink)">農場名</label><input id="farmName" data-chg="farm" value="${esc(db.meta.farmName)}" placeholder="農場名・生産者名" style="flex:1"></div>
-    <div class="tabs" style="margin-top:12px"><button class="tab ${k==='stock'?'on':''}" data-act="masterTab" data-k="stock">在庫</button>${Object.keys(MASTERS).map(x=>`<button class="tab ${x===k?'on':''}" data-act="masterTab" data-k="${x}">${MASTERS[x].label}（${live(x).length}）</button>`).join('')}</div>`;
-  if(k==='stock')return head+vStock();
+    <div class="tabs" style="margin-top:12px">${Object.keys(MASTERS).map(x=>`<button class="tab ${x===k?'on':''}" data-act="masterTab" data-k="${x}">${MASTERS[x].label}（${live(x).length}）</button>`).join('')}</div>
+    <div class="tabs" style="margin-top:6px"><button class="tab ${k==='stockP'?'on':''}" data-act="masterTab" data-k="stockP">農薬の在庫</button><button class="tab ${k==='stockF'?'on':''}" data-act="masterTab" data-k="stockF">肥料等の在庫</button></div>`;
+  if(k==='stock')sub.master='stockP';
+  if(k==='stock'||k==='stockP'||k==='stockF')return head+vStock(sub.master==='stockF'?'fertilizers':'pesticides');
   const m=MASTERS[k],list=live(k);
   return head+`
 <div style="margin:10px 0"><button class="pri" data-act="newMaster">＋ ${m.label}を追加</button></div>`
@@ -634,26 +645,45 @@ function vMaster(){
 }
 let importMsg=null,shareFile=null,dbVer=0;
 function vData(){
-  const mode={idb:'この端末のブラウザ内（IndexedDB）',ls:'この端末のブラウザ内（localStorage）',mem:'保存されません（この画面を閉じると消えます）'}[storeMode];
+  const pg=sub.dpage||'',back=`<button class="sm" data-act="dpage" data-k="">← データに戻る</button>`;
   const im=importMsg?`<div class="${importMsg.ng?'warn':'okmsg'}">${esc(importMsg.text)}</div>`:'';
+  if(pg==='backup')return back+`<h2>バックアップ・読み込み</h2>`+im+`
+    <h3>データファイルを書き出す（この端末に保存）</h3><label class="chk"><input type="checkbox" id="withPhotos" checked>写真を含める（ファイルが大きくなります）</label>
+    <button class="pri" data-act="exportJson" style="width:100%">データファイルを書き出す</button>
+    <p class="mut">書き出したファイルを保管しておくと、端末の故障や機種変更のときに元に戻せます。</p>
+    <h3>データファイルを読み込む</h3><p class="mut">今のデータと統合します。同じ記録は新しいほうが残ります。</p><input type="file" id="imp">`;
+  if(pg==='out')return back+`<h2>データ出力・送信</h2>`+`
+    <h3>ほかの人・端末に送る（LINE・メール）</h3>${navigator.share?`<label class="chk"><input type="checkbox" id="sharePhotos">写真を含める（通常は含めずに送ります）</label>
+    <button class="pri" data-act="shareJson" style="width:100%">共有する</button>
+    <p class="mut">受け取った人には、ファイルを開かずに、栽培ノートの「データ」→「バックアップ・読み込み」から読み込むよう伝えてください。開いて文字を書き換えると読み込めなくなります。</p>`:'<p class="mut">この端末のブラウザでは共有の機能が使えません。「バックアップ・読み込み」で書き出したファイルを、メールなどに添付して送ってください。</p>'}
+    <h3>表計算用データ出力（CSV）</h3><p class="mut">Excelなどで自由に集計したいときに使います。決まった様式の帳票は「帳票」から出せます。</p>
+    <button data-act="exportCsv" style="width:100%;margin-bottom:8px">記録の一覧をCSVで書き出す</button><button data-act="exportStockCsv" style="width:100%">在庫の記録をCSVで書き出す</button>`;
+  if(pg==='famic')return back+`<h2>農薬の登録情報</h2>`+im+`
+    <p>農薬の照合状況　<span class="mk y" style="margin:0">✔：${live('pesticides').filter(x=>x.famic).length}件</span>　<span class="mk n" style="margin:0">✘：${live('pesticides').filter(x=>!x.famic).length}件</span></p><p class="mut">✘の農薬は、台帳で「登録情報から探す」を使うと照合できます。</p>
+    <button data-act="checkAll" style="width:100%">台帳の農薬の登録内容をまとめて確認する</button>${famicNotes()}`;
+  const mode={idb:'この端末のブラウザ内',ls:'この端末のブラウザ内（簡易）',mem:'保存されません（この画面を閉じると消えます）'}[storeMode];
   const proto=location.protocol==='https:'||location.hostname==='localhost'?'':`<div class="warn">このページは端末内のファイルとして開かれています（${esc(location.protocol)}）。この開き方では、データが保存されなかったり、開くたびに別のデータになったりすることがあります。公開アドレス（https://…）から開いてください。</div>`;
-  return `<h2>データ</h2>`+im+proto+backupWarn()+`<button class="pri" data-act="nav" data-v="report" style="width:100%;margin-bottom:8px">帳票（Excel・印刷・PDF）</button>`+`<div class="card"><table>
-    <tr><th>保存先</th><td>${mode}</td></tr><tr><th>記録</th><td>${live('records').length}件</td></tr><tr><th>作付</th><td>${live('plantings').length}件</td></tr>
+  const nf=live('pesticides').filter(x=>!x.famic).length;
+  const M=(act,k,t,d)=>`<button class="menu" data-act="${act}" ${act==='nav'?`data-v="${k}"`:`data-k="${k}"`}><b>${t}</b><span>${d}</span></button>`;
+  return `<h2>データ</h2>`+im+proto+backupWarn()
+    +M('nav','report','帳票（Excel・印刷・PDF）','農薬使用記録・施肥記録・台帳などを、規範に合わせた表で出す')
+    +M('dpage','backup','バックアップ・読み込み','データファイルの書き出し（機種変更・故障に備える）と読み込み')
+    +M('dpage','out','データ出力・送信','LINE・メールで送る、表計算用（CSV）に書き出す')
+    +M('dpage','famic','農薬の登録情報',nf?`登録情報と照合していない農薬が${nf}件あります`:'照合状況の確認、出典と注意')
+    +`<div class="card"><table><tr><th>保存先</th><td>${mode}</td></tr><tr><th>記録</th><td>${live('records').length}件</td></tr><tr><th>作付</th><td>${live('plantings').length}件</td></tr>
     <tr><th>写真</th><td>${usedPhotoIds().length}枚${storeMode==='idb'?'':'（この画面では写真は保存されません）'}</td></tr>
     <tr><th>最後の書き出し</th><td>${db.meta.lastExport?esc(db.meta.lastExport.slice(0,10)):'なし'}</td></tr></table></div>
-    <h3>農薬の登録情報</h3><p>農薬の照合状況　<span class="mk y" style="margin:0">✔：${live('pesticides').filter(x=>x.famic).length}件</span>　<span class="mk n" style="margin:0">✘：${live('pesticides').filter(x=>!x.famic).length}件</span></p><p class="mut">✘の農薬は、台帳で「登録情報から探す」を使うと照合できます。</p>
-    <button data-act="checkAll" style="width:100%">台帳の農薬の登録内容をまとめて確認する</button>${famicNotes()}
-    <h3>バックアップ・機種変更（この端末に保存）</h3><label class="chk"><input type="checkbox" id="withPhotos" checked>写真を含める（ファイルが大きくなります）</label>
-    <button class="pri" data-act="exportJson" style="width:100%">データファイルを書き出す</button>
-    <h3>表計算用データ出力</h3><div class="row"><button data-act="exportCsv">記録の一覧をCSVで書き出す</button><button data-act="exportStockCsv">在庫の記録をCSVで書き出す</button></div>
-    ${navigator.share?`<h3>ほかの人・端末に送る（LINE・メール）</h3><label class="chk"><input type="checkbox" id="sharePhotos">写真を含める（通常は含めずに送ります）</label>
-    <button data-act="shareJson" style="width:100%">共有する</button>
-    <p class="mut">受け取った人には、ファイルを開かずに、栽培ノートの「データファイルを読み込む」から読み込むよう伝えてください。開いて文字を書き換えると読み込めなくなります。</p>`:''}
-    <div style="margin-top:8px"><label>データファイルを読み込む（今のデータと統合します）</label><input type="file" id="imp"></div>
-    <p class="mut" style="margin-top:16px">記録はこの端末の中だけに保存され、外部には送信されません。書き出したファイルを保管しておくと、端末の故障や機種変更のときに元に戻せます。</p>`;
+    <p class="mut">記録はこの端末の中だけに保存され、外部には送信されません。</p>`;
+}
+function vSettings(){const off=db.meta.off||{};
+  return `<h2>設定</h2>
+    <label for="farmName2">農場名・生産者名</label><input id="farmName2" data-chg="farm" value="${esc(db.meta.farmName)}" placeholder="画面の上と帳票に表示します">
+    <h3>使う記録</h3><p class="mut">使わない記録をオフにすると、記録するボタンが表示されなくなります。記録済みのデータは消えません。</p>
+    ${['ship','dry','check'].map(k=>`<label class="sw"><input type="checkbox" data-chg="recOn" data-k="${k}" ${off[k]?'':'checked'}>${RT[k].label}${k==='dry'&&!hasRice()?'<span class="mut" style="font-size:13px">（品目に米がないときは表示しません）</span>':''}</label>`).join('')}`;
 }
 function render(){
-  $('#app').innerHTML=({home:vHome,records:vRecords,plantings:vPlantings,master:vMaster,data:vData,report:vReport}[view])();
+  $('#app').innerHTML=({home:vHome,records:vRecords,plantings:vPlantings,master:vMaster,data:vData,report:vReport,settings:vSettings}[view])();
+  $('#farmHd').textContent=db.meta.farmName||'';
   $('#nav').innerHTML=NAV.map(n=>`<button class="${view===n[0]?'on':''}" data-act="nav" data-v="${n[0]}">${n[1]}</button>`).join('');
 }
 let toastT;function toast(m){const t=$('#toast');t.textContent=m;t.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>t.hidden=true,3200)}
@@ -701,11 +731,14 @@ function reportData(kind,o){
     repRecs('dry',o).map(r=>{const {f,c}=pf(r);return [r.date,f.name,c.name,r.lot,r.dryLot,r.moisture,r.amount,r.unit,r.grade,r.storage,r.use2,nm('workers',r.workerId),r.memo]}));
   const mats=()=>[...live('pesticides').map(x=>['pesticides',x]),...live('fertilizers').map(x=>['fertilizers',x])];
   if(kind==='stockSum'){const rows=mats().map(([c,x])=>{const st=stockOf(c,x.id);return [x.name,c==='pesticides'?'農薬':'肥料等',st.has?st.qty:'',st.unit,st.has?st.inSum:'',st.has?st.useSum:'',st.lastCount?st.lastCount.date:'',st.lastCount?st.lastCount.diff:'']});
-    rows.sort((a,b)=>(typeof b[2]==='number'?b[2]:-Infinity)-(typeof a[2]==='number'?a[2]:-Infinity));
-    return R(['資材','区分','在庫','単位','入庫の合計','使用の合計','最後の棚卸','棚卸の差'],rows)}
+    const ko=v=>v==='農薬'?0:1;rows.sort((a,b)=>ko(a[1])-ko(b[1])||(typeof b[2]==='number'?b[2]:-Infinity)-(typeof a[2]==='number'?a[2]:-Infinity)||String(a[0]).localeCompare(String(b[0]),'ja'));
+    rows.forEach(r=>{const t=r[0];r[0]=r[1];r[1]=t});
+    return R(['区分','資材','在庫','単位','入庫の合計','使用の合計','最後の棚卸','棚卸の差'],rows)}
   if(kind==='stockLog'){const rows=[];mats().forEach(([c,x])=>{const st=stockOf(c,x.id);st.hist.forEach(e=>{if((o.from&&e.date<o.from)||(o.to&&e.date>o.to))return;
       rows.push([e.date,x.name,c==='pesticides'?'農薬':'肥料等',{in:'入庫',use:'使用',count:'棚卸'}[e.kind],e.qty,e.unit,e.skip?'':e.after,st.unit,e.src&&e.src.supplier,e.rec?plantingLabel(byId('plantings',e.rec.plantingId)):'',(e.src||e.rec||{}).memo])})});
-    rows.sort((a,b)=>(a[0]||'').localeCompare(b[0]||''));return R(['日付','資材','区分','内容','数量','単位','在庫（この後）','在庫の単位','購入先','作付','メモ'],rows)}
+    const ko=v=>v==='農薬'?0:1;rows.sort((a,b)=>ko(a[2])-ko(b[2])||String(a[1]).localeCompare(String(b[1]),'ja')||(a[0]||'').localeCompare(b[0]||''));
+    rows.forEach(r=>{const d=r[0];r[0]=r[2];r[2]=d});
+    return R(['区分','資材','日付','内容','数量','単位','在庫（この後）','在庫の単位','購入先','作付','メモ'],rows)}
   if(kind==='fields')return R(['圃場名','所在地（地番・施設番号など）','面積(a)','取水・排水経路','周辺リスクなどのメモ'],
     live('fields').slice().sort((a,b)=>(a.name||'').localeCompare(b.name||'','ja',{numeric:true})).map(x=>[x.name,x.lot,x.area,x.water,x.note]));
   if(kind==='machines')return R(['用途','名称','点検の頻度(日)','最後の点検','次回の目安'],
@@ -722,7 +755,7 @@ function vReport(){const o=repOpt(),d=reportData(o.kind,o),dated=!['stockSum','f
     ${dated&&o.kind!=='check'&&o.kind!=='stockLog'?`<label>作付</label><select data-rep="pid"><option value="">すべての作付</option>${live('plantings').map(p=>`<option value="${p.id}" ${p.id===o.pid?'selected':''}>${esc(plantingLabel(p))}</option>`).join('')}</select>`:''}
     ${o.kind==='pesticide'?`<label>農薬使用記録の列</label><select data-rep="cols">${Object.entries(PEST_PRESETS).map(([k,v])=>`<option value="${k}" ${k===o.cols?'selected':''}>${v[0]}</option>`).join('')}</select>`:''}
     <div class="row" style="margin-top:12px"><button class="pri" data-act="repPrint">印刷・PDFで保存</button><button data-act="repXlsx">Excelで書き出す（全帳票）</button></div>
-    <p class="mut">印刷画面で「PDFとして保存」を選ぶとPDFになります。Excelは、この期間・作付で全部の帳票を1つのファイルに書き出します。</p></div>
+    <p class="mut">印刷画面で「PDFとして保存」を選ぶとPDFになります。用紙は横向きで作っています。縦で表示される場合は、印刷画面の「向き」を「横」にしてください。Excelは、この期間・作付で全部の帳票を1つのファイルに書き出します。</p></div>
     <div class="rep"><h3>${esc(repTitle(o.kind))}</h3><p class="rmeta">${esc(repMeta(o))}</p>
     ${d.rows.length?`<div class="tw"><table class="rt"><thead><tr>${d.head.map(h=>`<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${d.rows.map(r=>`<tr>${r.map(v=>`<td>${esc(v==null?'':v)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`:'<p class="mut">該当する記録がありません。</p>'}
     ${o.kind==='pesticide'?`<p class="fnote">${esc(FAMIC_NOTE1)}</p>`:''}</div>`}
@@ -747,13 +780,14 @@ function csvText(){
 
 /* ---------- 操作 ---------- */
 const ACT={
-  nav:e=>{view=e.dataset.v;if(view==='records')sub.planting='';render();window.scrollTo(0,0)},
+  nav:e=>{view=e.dataset.v;if(view==='records')sub.planting='';if(view==='data'&&e.closest('#nav'))sub.dpage='';render();window.scrollTo(0,0)},
   newRec:e=>recordForm(e.dataset.type),
   editRec:e=>{const r=byId('records',e.dataset.id);if(!r)return;recordForm(r.type,r);
     $('#frm .acts').insertAdjacentHTML('beforeend',`<button type="button" data-act="dupRec" data-id="${r.id}">複製して新しく記録</button>`)},
   dupRec:e=>{const r=byId('records',e.dataset.id);closeForm(true);recordForm(r.type,r,true)},
   masterTab:e=>{sub.master=e.dataset.k;render()},
   recType:e=>{sub.type=e.dataset.k;render()},
+  dpage:e=>{sub.dpage=e.dataset.k;importMsg=null;render();window.scrollTo(0,0)},
   repPrint:()=>{try{window.print()}catch(e){toast('この画面では印刷できません')}},
   repXlsx:async e=>{e.textContent='作成中…';try{await exportXlsx();toast('Excelを書き出しました')}catch(err){toast('Excelを作れませんでした。通信できる状態で一度開いてから試してください。')}render()},
   stockMat:e=>{sub.stockMat=sub.stockMat===e.dataset.k?'':e.dataset.k;render()},
@@ -828,7 +862,8 @@ document.addEventListener('change',async e=>{const el=e.target;
   if(formCtx&&el.closest&&el.closest('#frm')){updChecks();return}
   if(el.dataset&&el.dataset.rep){sub.rep=Object.assign(repOpt(),{[el.dataset.rep]:el.value});render();return}
   const k=el.dataset&&el.dataset.chg;if(!k)return;
-  if(k==='farm'){db.meta.farmName=el.value.trim();await save();return}
+  if(k==='farm'){db.meta.farmName=el.value.trim();await save();$('#farmHd').textContent=db.meta.farmName;return}
+  if(k==='recOn'){db.meta.off=Object.assign({},db.meta.off,{[el.dataset.k]:!el.checked});await save();return}
   sub[k]=el.value;render()});
 $('#modal').addEventListener('click',e=>{if(e.target.id==='modal')closeForm()});
 load().then(()=>{if(!db.meta.seededTasks||!db.meta.seededSow){seedTasks();seedSow();save()}render()});
