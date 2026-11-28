@@ -7,22 +7,26 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" href="icon-192.png">
-<title>栽培ノート（試作3）</title>
+<title>栽培ノート</title>
 <style>
 :root{--g:#006e54;--gt:#006e54;--g2:#e2f0eb;--ink:#1f2a22;--mut:#667066;--line:#d9e0d9;--bg:#f6f8f5;--warn:#b25a00;--warnbg:#fff4e2;--red:#b3261e}
 *{box-sizing:border-box}
 html,body{margin:0}
 body{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic UI","Noto Sans JP",Meiryo,sans-serif;color:var(--ink);background:var(--bg);font-size:16px;line-height:1.5;padding-bottom:76px}
 header{background:var(--g);color:#fff;padding:10px 12px 10px 16px;display:flex;align-items:center;gap:10px}
-header h1{flex:0 0 auto}#farmHd{flex:1;min-width:0;font-size:14px;opacity:.9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+header h1{flex:1;min-width:0;display:flex;white-space:nowrap}header .ttl{flex:0 0 auto}#farmHd{min-width:0;overflow:hidden;text-overflow:ellipsis}#farmHd:not(:empty)::before{content:'｜';opacity:.6;margin:0 2px}
+#setBtn.on{background:#fff;color:var(--g)}
 #setBtn{flex:0 0 auto;background:transparent;color:#fff;border:1px solid rgba(255,255,255,.6);min-height:36px;padding:4px 10px;font-size:14px}
 .menu{display:block;width:100%;text-align:left;margin:0 0 10px;padding:14px 16px}.menu b{display:block;font-size:17px}.menu span{display:block;font-size:13px;color:var(--mut);font-weight:400;margin-top:2px}
 .sw{display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--line);font-size:16px}.sw input{width:24px;height:24px;flex:0 0 auto}
 input[type=checkbox]{accent-color:var(--g)}
 header h1{margin:0;font-size:18px;font-weight:600}
 header small{font-weight:400;opacity:.8;margin-left:6px;font-size:13px}
-main{max-width:760px;margin:0 auto;padding:14px}
+main{max-width:760px;margin:0 auto;padding:4px 14px 14px}
 h2{font-size:17px;margin:18px 0 8px}
+#app h2{display:flex;align-items:center;gap:8px;font-size:19px;color:var(--g);margin:16px 0 10px;padding-bottom:6px;border-bottom:2px solid var(--g2)}
+#app h2 .ic{flex:0 0 auto;width:30px;height:30px;border-radius:8px;background:var(--g);display:flex;align-items:center;justify-content:center}#app h2 .ic svg{width:18px;height:18px;stroke:#fff;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+#app h2 .mut{margin-left:auto}
 h3{font-size:15px;margin:14px 0 6px;color:var(--mut);font-weight:600}
 .card{background:#fff;border:1px solid var(--line);border-radius:10px;padding:12px;margin:8px 0}
 .row{display:flex;gap:8px;flex-wrap:wrap}
@@ -116,7 +120,7 @@ label.btn{display:inline-flex;align-items:center;justify-content:center;color:va
 </style>
 </head>
 <body>
-<header><h1>栽培ノート<small>試作3</small></h1><span id="farmHd"></span><button id="setBtn" data-act="nav" data-v="settings" aria-label="設定">⚙ 設定</button></header>
+<header><h1><span class="ttl">栽培ノート</span><span id="farmHd"></span></h1><button id="setBtn" data-act="settings" aria-label="設定">⚙ 設定</button></header>
 <main id="app"></main>
 <nav id="nav"></nav>
 <div id="modal" class="modal" hidden></div>
@@ -413,6 +417,10 @@ const FAMIC_NOTE1='本アプリで提供する農薬の情報は、独立行政�
 const FAMIC_NOTE2='本情報の利用により直接又は間接的に生じた利用者又はそれ以外の第三者の損害について、独立行政法人農林水産消費安全技術センターはその内容、方法の如何にかかわらず、一切責任を負いません。';
 const famicNotes=()=>`<details class="fnote"><summary>農薬の情報は、FAMIC「農薬登録情報ダウンロード」のデータを本サイトが複製・加工したものです。使用の際は必ずラベルで確認してください。（出典と注意の全文）</summary><p>${FAMIC_NOTE1}</p><p>${FAMIC_NOTE2}</p></details>`;
 let famicIdx=null,famicIdxP=null;
+let famicMeta=null,famicMetaP=null;
+function famicMetaText(){if(famicMeta)return famicMeta.ng?'確認できません（通信できないとき）':`${famicMeta.asOf}時点のデータ（${famicMeta.registrations}剤）`;
+  if(!famicMetaP)famicMetaP=fetch(FAMIC_DIR+'meta.json',{cache:'no-cache'}).then(r=>r.json()).then(j=>{famicMeta=j}).catch(()=>{famicMeta={ng:1}}).then(()=>{if(view==='settings')render()});
+  return '確認中…'}
 function famicIndex(){if(famicIdx)return Promise.resolve(famicIdx);
   if(!famicIdxP)famicIdxP=fetch(FAMIC_DIR+'index.json',{cache:'no-cache'}).then(r=>{if(!r.ok)throw new Error('HTTP '+r.status);return r.json()})
     .then(j=>{j.items.forEach(x=>{x.key=cmKey(x[1]+' '+x[2])});famicIdx=j;return j}).catch(e=>{famicIdxP=null;throw e});
@@ -597,6 +605,7 @@ function backupWarn(){
   if(n&&(!le||Date.now()-new Date(le).getTime()>30*864e5))return `<div class="warn">${le?'最後の書き出しから30日以上たっています。':'まだ一度もデータを書き出していません。'}「データ」→「バックアップ・読み込み」から書き出してください。</div>`;
   return '';
 }
+const APP_VER='試作3（2026年11月28日）';
 const recOff=k=>!!((db.meta.off||{})[k]);
 const recOn=k=>!recOff(k)&&!(RT[k].rice&&!hasRice());
 const hasRice=()=>live('crops').some(c=>{const it=cmItemFor(c.name);return it&&it.name==='米'});
@@ -633,9 +642,10 @@ function vPlantings(){
 }
 function vMaster(){
   if(sub.master==='stock')sub.master='stockP';
-  const k=sub.master,head=`<h2>台帳</h2><div class="frow" style="align-items:center"><label for="farmName" style="margin:0;flex:0 0 auto;color:var(--ink)">農場名</label><input id="farmName" data-chg="farm" value="${esc(db.meta.farmName)}" placeholder="農場名・生産者名" style="flex:1"></div>
+  if((sub.master==='stockP'&&recOff('stockP'))||(sub.master==='stockF'&&recOff('stockF')))sub.master='fields';
+  const k=sub.master,head=`<h2>台帳</h2>
     <div class="tabs" style="margin-top:12px">${Object.keys(MASTERS).map(x=>`<button class="tab ${x===k?'on':''}" data-act="masterTab" data-k="${x}">${MASTERS[x].label}（${live(x).length}）</button>`).join('')}</div>
-    <div class="tabs" style="margin-top:6px"><button class="tab ${k==='stockP'?'on':''}" data-act="masterTab" data-k="stockP">農薬の在庫</button><button class="tab ${k==='stockF'?'on':''}" data-act="masterTab" data-k="stockF">肥料等の在庫</button></div>`;
+    ${recOff('stockP')&&recOff('stockF')?'':`<div class="tabs" style="margin-top:6px">${[['stockP','農薬の在庫'],['stockF','肥料等の在庫']].filter(([x])=>!recOff(x)).map(([x,l])=>`<button class="tab ${k===x?'on':''}" data-act="masterTab" data-k="${x}">${l}</button>`).join('')}</div>`}`;
   if(k==='stock')sub.master='stockP';
   if(k==='stock'||k==='stockP'||k==='stockF')return head+vStock(sub.master==='stockF'?'fertilizers':'pesticides');
   const m=MASTERS[k],list=live(k);
@@ -670,8 +680,9 @@ function vData(){
     +M('dpage','backup','バックアップ・読み込み','データファイルの書き出し（機種変更・故障に備える）と読み込み')
     +M('dpage','out','データ出力・送信','LINE・メールで送る、表計算用（CSV）に書き出す')
     +M('dpage','famic','農薬の登録情報',nf?`登録情報と照合していない農薬が${nf}件あります`:'照合状況の確認、出典と注意')
-    +`<div class="card"><table><tr><th>保存先</th><td>${mode}</td></tr><tr><th>記録</th><td>${live('records').length}件</td></tr><tr><th>作付</th><td>${live('plantings').length}件</td></tr>
+    +`<div class="card"><table><tr><th>保存先</th><td>${mode}</td></tr><tr><th>記録</th><td>${live('records').length}件</td></tr>
     <tr><th>写真</th><td>${usedPhotoIds().length}枚${storeMode==='idb'?'':'（この画面では写真は保存されません）'}</td></tr>
+    <tr><th>農薬の照合状況</th><td><span class="mk y" style="margin:0">✔ ${live('pesticides').filter(x=>x.famic).length}件</span>　<span class="mk n" style="margin:0">✘ ${nf}件</span></td></tr>
     <tr><th>最後の書き出し</th><td>${db.meta.lastExport?esc(db.meta.lastExport.slice(0,10)):'なし'}</td></tr></table></div>
     <p class="mut">記録はこの端末の中だけに保存され、外部には送信されません。</p>`;
 }
@@ -679,13 +690,32 @@ function vSettings(){const off=db.meta.off||{};
   return `<h2>設定</h2>
     <label for="farmName2">農場名・生産者名</label><input id="farmName2" data-chg="farm" value="${esc(db.meta.farmName)}" placeholder="画面の上と帳票に表示します">
     <h3>使う記録</h3><p class="mut">使わない記録をオフにすると、記録するボタンが表示されなくなります。記録済みのデータは消えません。</p>
-    ${['ship','dry','check'].map(k=>`<label class="sw"><input type="checkbox" data-chg="recOn" data-k="${k}" ${off[k]?'':'checked'}>${RT[k].label}${k==='dry'&&!hasRice()?'<span class="mut" style="font-size:13px">（品目に米がないときは表示しません）</span>':''}</label>`).join('')}`;
+    ${['ship','dry','check'].map(k=>`<label class="sw"><input type="checkbox" data-chg="recOn" data-k="${k}" ${off[k]?'':'checked'}>${RT[k].label}${k==='dry'&&!hasRice()?'<span class="mut" style="font-size:13px">（品目に米がないときは表示しません）</span>':''}</label>`).join('')}
+    <h3>使う台帳</h3><p class="mut">オフにすると、台帳に在庫のボタンが表示されなくなります。入庫・棚卸の記録は消えません。</p>
+    ${[['stockP','農薬の在庫'],['stockF','肥料等の在庫']].map(([k,l])=>`<label class="sw"><input type="checkbox" data-chg="recOn" data-k="${k}" ${off[k]?'':'checked'}>${l}</label>`).join('')}
+    <h3>バージョン情報</h3><div class="card"><table><tr><th>アプリ</th><td>栽培ノート</td></tr><tr><th>版</th><td>${APP_VER}</td></tr>
+    <tr><th>農薬の登録情報</th><td>${esc(famicMetaText())}</td></tr></table></div>`;
 }
 function render(){
   $('#app').innerHTML=({home:vHome,records:vRecords,plantings:vPlantings,master:vMaster,data:vData,report:vReport,settings:vSettings}[view])();
-  $('#farmHd').textContent=db.meta.farmName||'';
+  $('#farmHd').textContent=db.meta.farmName||'';headIcons();$('#setBtn').classList.toggle('on',view==='settings');
   $('#nav').innerHTML=NAV.map(n=>`<button class="${view===n[0]?'on':''}" data-act="nav" data-v="${n[0]}">${n[1]}</button>`).join('');
 }
+const ICONS={
+  pen:'<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13 7l4 4"/>',
+  clock:'<circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/>',
+  list:'<path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r=".8"/><circle cx="4.5" cy="12" r=".8"/><circle cx="4.5" cy="18" r=".8"/>',
+  sprout:'<path d="M12 21v-9"/><path d="M12 12C12 7 8 5 4 5c0 5 3 7 8 7z"/><path d="M12 14c0-4 3-6 8-6 0 4-3 6-8 6z"/>',
+  book:'<path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z"/><path d="M5 17a3 3 0 0 1 3-3h11"/>',
+  box:'<path d="M3 8l9-5 9 5v8l-9 5-9-5z"/><path d="M3 8l9 5 9-5M12 13v8"/>',
+  doc:'<path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4M9 12h6M9 16h6"/>',
+  save:'<path d="M12 3v12M7 10l5 5 5-5"/><path d="M4 17v3h16v-3"/>',
+  send:'<path d="M21 3L3 11l7 3 3 7z"/><path d="M10 14l11-11"/>',
+  leaf:'<path d="M5 19C5 10 10 5 20 4c-1 10-6 15-15 15z"/><path d="M5 19l8-8"/>',
+  gear:'<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/>',
+  db:'<ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v12c0 1.7 3.1 3 7 3s7-1.3 7-3V6M5 12c0 1.7 3.1 3 7 3s7-1.3 7-3"/>'};
+const H_ICON=[['記録する','pen'],['最近','clock'],['記録の一覧','list'],['作付','sprout'],['台帳','book'],['帳票','doc'],['バックアップ','save'],['データ出力','send'],['農薬の登録','leaf'],['設定','gear'],['データ','db']];
+function headIcons(){document.querySelectorAll('#app h2').forEach(h=>{const t=h.textContent;const f=H_ICON.find(([k])=>t.startsWith(k));if(f)h.insertAdjacentHTML('afterbegin',`<span class="ic"><svg viewBox="0 0 24 24">${ICONS[f[1]]}</svg></span>`)})}
 let toastT;function toast(m){const t=$('#toast');t.textContent=m;t.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>t.hidden=true,3200)}
 
 /* ---------- 書き出し・読み込み ---------- */
@@ -787,6 +817,7 @@ const ACT={
   dupRec:e=>{const r=byId('records',e.dataset.id);closeForm(true);recordForm(r.type,r,true)},
   masterTab:e=>{sub.master=e.dataset.k;render()},
   recType:e=>{sub.type=e.dataset.k;render()},
+  settings:()=>{if(view==='settings'){view=sub.prevView||'home'}else{sub.prevView=view;view='settings'}render();window.scrollTo(0,0)},
   dpage:e=>{sub.dpage=e.dataset.k;importMsg=null;render();window.scrollTo(0,0)},
   repPrint:()=>{try{window.print()}catch(e){toast('この画面では印刷できません')}},
   repXlsx:async e=>{e.textContent='作成中…';try{await exportXlsx();toast('Excelを書き出しました')}catch(err){toast('Excelを作れませんでした。通信できる状態で一度開いてから試してください。')}render()},
