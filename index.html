@@ -97,6 +97,8 @@ nav button.on{color:var(--gt);font-weight:700;box-shadow:inset 0 3px 0 var(--g)}
 .frow>.fc{flex:1 1 0;min-width:0}
 .frow>.fc.s{flex:0 0 92px}
 .frow label{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fc{display:flex;gap:8px;align-items:center}.fc .tx{flex:1;min-width:0}.fc .d{font-weight:600;margin-right:8px;color:var(--g)}.fc .d.late{color:var(--warn)}.fc .sm{flex:0 0 auto}
+.cmp td,.cmp th{text-align:left}.cmp2{font-size:13px;width:100%;table-layout:fixed}.cmp2 td{vertical-align:top;border:1px solid var(--line);padding:4px 6px;word-break:break-all}.cmp2 th{background:var(--g2);padding:4px}
 .okmsg{background:var(--g2);border:1px solid #9fcdbd;color:#00513e;border-radius:10px;padding:10px 12px;margin:8px 0;font-size:14px}
 .acts .pri{flex:2}
 #toast{position:fixed;left:50%;bottom:86px;transform:translateX(-50%);background:#1f2a22;color:#fff;padding:10px 16px;border-radius:8px;font-size:14px;z-index:20;max-width:90%}
@@ -503,6 +505,72 @@ function harvestReady(pid){let best=null;
     const rows=pestRows(pest,byId('plantings',pid))||[];const cand=pickRows(rows,r.use,r.target);
     const ds=cand.map(x=>phiDays(x.r.timing)).filter(v=>v!=null);if(!ds.length)return;const ok=addDays(r.date,Math.max(...ds));
     if(!best||ok>best.date)best={date:ok,name:pest.name}});return best}
+/* ---------- 前年比較・作業予測 ---------- */
+const yr=d=>d?+String(d).slice(0,4):null;
+const dAdd=(d,n)=>{const t=new Date(d+'T00:00:00');t.setDate(t.getDate()+n);return t.getFullYear()+'-'+pad(t.getMonth()+1)+'-'+pad(t.getDate())};
+const dDiff=(a,b)=>Math.round((new Date(a+'T00:00:00')-new Date(b+'T00:00:00'))/864e5);
+const pRecs=pid=>live('records').filter(r=>r.plantingId===pid&&r.date).sort((a,b)=>a.date.localeCompare(b.date)||(a.updatedAt||'').localeCompare(b.updatedAt||''));
+function plantYear(p){if(p.start)return yr(p.start);const m=(p.season||'').match(/(20\d\d)/);if(m)return +m[1];const rs=pRecs(p.id);if(rs.length)return yr(rs[0].date);return yr(p.updatedAt)||new Date().getFullYear()}
+const seasonKey=p=>(p.season||'').replace(/20\d\d|令和\s*\d+|R\d+|年度|年|\s/g,'');
+const cropOf=p=>byId('crops',p.cropId)||{};
+function prevCands(p){const y=plantYear(p),cn=cropOf(p).name;return live('plantings').filter(q=>q.id!==p.id&&cropOf(q).name===cn&&plantYear(q)<y)}
+function prevPlanting(p){if(!p)return null;if(p.prevId==='none')return null;if(p.prevId){const q=byId('plantings',p.prevId);if(q)return q}
+  const cs=prevCands(p);if(!cs.length)return null;const my=Math.max(...cs.map(plantYear)),c=cropOf(p);
+  const sc=q=>(q.fieldId===p.fieldId?2:0)+(seasonKey(q)===seasonKey(p)?2:0)+(cropOf(q).variety===c.variety?1:0);
+  return cs.filter(q=>plantYear(q)===my).sort((a,b)=>sc(b)-sc(a))[0]}
+/* 基準日：定植→播種→開始日→最初の記録 */
+function anchors(p){const a={},rs=pRecs(p.id);
+  rs.forEach(r=>{const t=r.type==='work'&&byId('tasks',r.itemId);if(t&&t.kind&&!a[t.kind])a[t.kind]=r.date});
+  if(p.start)a['開始日']=p.start;if(rs.length)a['最初の記録']=rs[0].date;return a}
+function alignOf(p,q){const a=anchors(p),b=anchors(q);
+  for(const k of ['定植','播種','開始日','最初の記録'])if(a[k]&&b[k])return {kind:k,cur:a[k],prev:b[k]};
+  const n=plantYear(p)-plantYear(q);return {kind:'暦',years:n}}
+const shiftDate=(al,d)=>al.kind==='暦'?(yr(d)+al.years)+d.slice(4):dAdd(al.cur,dDiff(d,al.prev));
+const FC_TYPES=['work','pesticide','fertilizer','harvest'];
+const recKey=r=>r.type==='harvest'?'harvest':r.type+'|'+(r.itemId||'');
+function keyed(rs){const n={};return rs.map(r=>{const k=recKey(r);n[k]=(n[k]||0)+1;return {r,k,i:n[k]}})}
+/* 前年の記録から、今年まだ行っていない作業の目安日 */
+function forecast(p){const q=prevPlanting(p);if(!q||p.done)return null;const al=alignOf(p,q);
+  const done={};pRecs(p.id).forEach(r=>{const k=recKey(r);done[k]=(done[k]||0)+1});
+  const items=keyed(pRecs(q.id).filter(r=>FC_TYPES.includes(r.type))).filter(x=>!(x.k==='harvest'&&x.i>1)&&x.i>(done[x.k]||0))
+    .map(x=>({r:x.r,date:shiftDate(al,x.r.date),label:fcLabel(x.r)}));
+  return {q,al,items}}
+const fcLabel=r=>r.type==='harvest'?'収穫開始':r.type==='work'?((byId('tasks',r.itemId)||{}).name||'作業'):(RT[r.type].label+'：'+((byId(r.type==='pesticide'?'pesticides':'fertilizers',r.itemId)||{}).name||''));
+const alText=al=>al.kind==='暦'?'前年の同じ時期':al.kind+'日を基準';
+function fcRow(x,p,showP){const t=today(),late=x.date<t;
+  return `<div class="item fc"><div class="tx"><div class="t"><span class="d ${late?'late':''}">${fmtMD(x.date)}${x.date===t?'（今日）':late?'（過ぎています）':''}</span>${esc(x.label)}</div>
+    <div class="s">${showP?esc(plantingLabel(p))+'　':''}前年 ${fmtMD(x.r.date)}${x.r.type==='pesticide'&&x.r.dilution?'　'+esc(x.r.dilution)+'倍':''}${x.r.type==='fertilizer'&&x.r.amount!=null&&x.r.amount!==''?'　'+esc(x.r.amount)+esc(x.r.unit||''):''}</div></div>
+    <button class="sm" data-act="fcRec" data-id="${x.r.id}" data-pid="${p.id}">記録する</button></div>`}
+function homeForecast(){const t=today(),out=[];
+  live('plantings').filter(p=>!p.done).forEach(p=>{const f=forecast(p);if(!f)return;f.items.filter(x=>x.date>=dAdd(t,-7)&&x.date<=dAdd(t,14)).forEach(x=>out.push([x,p]))});
+  out.sort((a,b)=>a[0].date.localeCompare(b[0].date));return out.slice(0,8)}
+function sumOf(p){const rs=pRecs(p.id),hv={},o={hv:'',first:'',pest:0,fert:0,hours:0,work:0};
+  rs.forEach(r=>{if(r.type==='harvest'){if(!o.first)o.first=r.date;if(typeof r.amount==='number')hv[r.unit||'']=(hv[r.unit||'']||0)+r.amount}
+    if(r.type==='pesticide')o.pest++;if(r.type==='fertilizer')o.fert++;if(typeof r.hours==='number')o.hours+=r.hours*(typeof r.people==='number'&&r.people>0?r.people:1);if(r.type==='work')o.work++});
+  o.hv=Object.keys(hv).map(u=>r3(hv[u])+u).join('、');const a=anchors(p);o.base=a['定植']||a['播種']||'';o.baseK=a['定植']?'定植日':a['播種']?'播種日':'';
+  const area=+p.area;if(area>0&&hv.kg)o.per10a=r3(hv.kg/area*10)+'kg';return o}
+function vCompare(p){const q=prevPlanting(p),cs=prevCands(p);
+  const sel=`<label>比べる作付</label><select data-chg="prevId" data-pid="${p.id}"><option value="" ${!p.prevId?'selected':''}>自動で選ぶ${!p.prevId&&q?'（'+esc(plantingLabel(q))+'）':''}</option>
+    ${cs.map(x=>`<option value="${x.id}" ${p.prevId===x.id?'selected':''}>${esc(plantingLabel(x))}（${plantYear(x)}年）</option>`).join('')}<option value="none" ${p.prevId==='none'?'selected':''}>比べない</option></select>`;
+  if(!q)return `<h2>前年との比較</h2>${cs.length?sel:''}<p class="mut">${cs.length?'比べる作付を選んでください。':'同じ品目の前年以前の作付がありません。来年からは、今年の記録と比べられます。'}</p>`;
+  const a=sumOf(p),b=sumOf(q),al=alignOf(p,q),y0=plantYear(p),y1=plantYear(q);
+  const row=(l,x,y)=>`<tr><th>${l}</th><td>${esc(x)||'―'}</td><td>${esc(y)||'―'}</td></tr>`;
+  let html=`<h2>前年との比較</h2>${sel}<div class="card"><table class="cmp"><tr><th></th><th>${y0}年</th><th>${y1}年</th></tr>
+    ${row(a.baseK||b.baseK||'定植日',a.base&&fmtMD(a.base),b.base&&fmtMD(b.base))}${row('収穫開始',a.first&&fmtMD(a.first),b.first&&fmtMD(b.first))}
+    ${row('収穫量の合計',a.hv,b.hv)}${a.per10a||b.per10a?row('10a当たり',a.per10a,b.per10a):''}${row('農薬使用',a.pest+'回',b.pest+'回')}${row('施肥',a.fert+'回',b.fert+'回')}
+    ${row('作業時間（延べ）',a.hours?r3(a.hours)+'時間':'',b.hours?r3(b.hours)+'時間':'')}</table></div>`;
+  if(!sub.cmpOpen)return html+`<button data-act="cmpOpen" style="width:100%">記録を前年と並べて見る</button>`;
+  const A=keyed(pRecs(p.id)),B=keyed(pRecs(q.id)),rows=[],used=new Set();
+  B.forEach(x=>{const m=A.find(y=>y.k===x.k&&y.i===x.i);if(m)used.add(m);rows.push({d:shiftDate(al,x.r.date),a:m&&m.r,b:x.r})});
+  A.filter(y=>!used.has(y)).forEach(y=>rows.push({d:y.r.date,a:y.r,b:null}));
+  rows.sort((x,y)=>(x.a?x.a.date:x.d).localeCompare(y.a?y.a.date:y.d));
+  const cell=r=>r?`<b>${fmtMD(r.date)}</b> ${esc(RT[r.type].label)}<br>${esc(recSummary(r))}`:'';
+  return html+`<button data-act="cmpOpen" style="width:100%">並べた表を閉じる</button><p class="mut">${esc(alText(al))}にして、同じ作業・資材の何回目どうしを同じ行に並べています。</p>
+    <div class="tw"><table class="cmp2"><tr><th>${y0}年</th><th>${y1}年</th></tr>${rows.map(x=>`<tr><td>${cell(x.a)}</td><td>${cell(x.b)}</td></tr>`).join('')}</table></div>`}
+function newFromPrev(p){const y=new Date().getFullYear(),dy=y-plantYear(p);
+  const v={fieldId:p.fieldId,cropId:p.cropId,type:p.type,area:p.area,varietyNote:p.varietyNote,harvestPlan:p.harvestPlan,season:(p.season||'').replace(/20\d\d/,m=>String(+m+dy)),prevId:p.id};
+  openForm({title:'作付を追加',defs:MASTERS.plantings.defs,values:v,onSave:w=>{const n=upsert('plantings',Object.assign({prevId:p.id},w));sub.planting=n.id;toast('作付を追加しました')}})}
+
 /* その作付の定植日（定植の記録の最も早い日） */
 function plantDate(pid){let d=null;live('records').forEach(r=>{if(r.type==='work'&&r.plantingId===pid&&r.date){const t=byId('tasks',r.itemId);if(t&&t.kind==='定植'&&(!d||r.date<d))d=r.date}});return d}
 const isNursery=r=>{if(!r.plantingId||!r.date)return false;const t=r.type==='work'&&byId('tasks',r.itemId);if(t&&t.kind==='定植')return false;const d=plantDate(r.plantingId);return !!d&&r.date<d};
@@ -598,14 +666,14 @@ function stockCsv(){const q=v=>{v=v==null?'':String(v);return /[",\r\n]/.test(v)
   return '﻿'+out.join('\r\n')}
 
 /* ---------- 画面 ---------- */
-const NAV=[['home','ホーム'],['records','記録'],['plantings','作付'],['master','台帳'],['data','データ']];
+const NAV=[['home','ホーム'],['records','一覧'],['plantings','作付'],['master','台帳'],['data','データ']];
 function backupWarn(){
   const n=live('records').length,le=db.meta.lastExport;
   if(storeMode==='mem')return '<div class="warn">この画面では端末内に保存できません。閉じる前に「データ」から書き出してください。</div>';
   if(n&&(!le||Date.now()-new Date(le).getTime()>30*864e5))return `<div class="warn">${le?'最後の書き出しから30日以上たっています。':'まだ一度もデータを書き出していません。'}「データ」→「バックアップ・読み込み」から書き出してください。</div>`;
   return '';
 }
-const APP_VER='試作3（2026年11月28日）';
+const APP_VER='試作4（2026年11月28日）';
 const recOff=k=>!!((db.meta.off||{})[k]);
 const recOn=k=>!recOff(k)&&!(RT[k].rice&&!hasRice());
 const hasRice=()=>live('crops').some(c=>{const it=cmItemFor(c.name);return it&&it.name==='米'});
@@ -616,6 +684,7 @@ function vHome(){
   const due=recOff('check')?[]:maintDue();
   return backupWarn()+(due.length?`<div class="warn">点検の時期です：${due.map(([m,i])=>esc(m.name)+'（'+fmtMD(i.next)+'）').join('、')}</div>`:'')+`<h2>記録する</h2>`+addBtns()
     +(live('plantings').length?'':'<div class="warn">最初に「台帳」で圃場・品目・作付を登録してください。農薬・肥料・作業者は、記録の入力中に追加できます。</div>')
+    +(()=>{const fc=homeForecast();return fc.length?`<h2>作業の目安</h2><p class="mut">前年の記録から、この先2週間の作業の目安です。</p>`+fc.map(([x,p])=>fcRow(x,p,true)).join(''):''})()
     +`<h2>最近の記録</h2>`+(recs.length?recs.map(r=>recItem(r,true)).join(''):'<p class="mut">記録はまだありません。</p>');
 }
 function vRecords(){
@@ -638,7 +707,12 @@ function vPlantings(){
     ${(()=>{const hr=harvestReady(p.id);return hr&&hr.date>today()?`<div class="warn">農薬の使用時期から、収穫できるのは${fmtMD(hr.date)}からです（${esc(hr.name)}）。</div>`:''})()}
     <table><tr><th>収穫量の合計</th><td class="n">${esc(hvs)||'―'}</td></tr>
     ${Object.keys(pc).map(id=>`<tr><th>${esc(refLabel('pesticides',byId('pesticides',id)))}</th><td class="n">${pc[id]}回</td></tr>`).join('')}</table></div>`
-    +addBtns(true)+`<h3>作業の履歴（新しい順）</h3>`+(recs.length?recs.map(r=>recItem(r,false)).join(''):'<p class="mut">この作付の記録はまだありません。</p>');
+    +addBtns(true)
+    +(()=>{const f=forecast(p);if(!f)return '';const t=today(),it=f.items.filter(x=>x.date>=dAdd(t,-30)).slice(0,6);
+      return `<h2>作業の目安</h2><p class="mut">${plantYear(f.q)}年の記録から（${esc(alText(f.al))}）。今年まだ記録していない作業を表示します。</p>`+(it.length?it.map(x=>fcRow(x,p,false)).join(''):'<p class="mut">前年の記録にある作業は、すべて記録済みです。</p>')})()
+    +vCompare(p)
+    +(plantYear(p)<new Date().getFullYear()?`<button data-act="newFromPrev" data-id="${p.id}" style="width:100%;margin-top:10px">この作付をもとに今年の作付を作る</button>`:'')
+    +`<h3>作業の履歴（新しい順）</h3>`+(recs.length?recs.map(r=>recItem(r,false)).join(''):'<p class="mut">この作付の記録はまだありません。</p>');
 }
 function vMaster(){
   if(sub.master==='stock')sub.master='stockP';
@@ -712,9 +786,11 @@ const ICONS={
   save:'<path d="M12 3v12M7 10l5 5 5-5"/><path d="M4 17v3h16v-3"/>',
   send:'<path d="M21 3L3 11l7 3 3 7z"/><path d="M10 14l11-11"/>',
   leaf:'<path d="M5 19C5 10 10 5 20 4c-1 10-6 15-15 15z"/><path d="M5 19l8-8"/>',
+  cal:'<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M8 3v4M16 3v4"/>',
+  cmp:'<path d="M6 20V10M12 20V4M18 20v-7"/>',
   gear:'<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/>',
   db:'<ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v12c0 1.7 3.1 3 7 3s7-1.3 7-3V6M5 12c0 1.7 3.1 3 7 3s7-1.3 7-3"/>'};
-const H_ICON=[['記録する','pen'],['最近','clock'],['記録の一覧','list'],['作付','sprout'],['台帳','book'],['帳票','doc'],['バックアップ','save'],['データ出力','send'],['農薬の登録','leaf'],['設定','gear'],['データ','db']];
+const H_ICON=[['作業の目安','cal'],['前年','cmp'],['記録する','pen'],['最近','clock'],['記録の一覧','list'],['作付','sprout'],['台帳','book'],['帳票','doc'],['バックアップ','save'],['データ出力','send'],['農薬の登録','leaf'],['設定','gear'],['データ','db']];
 function headIcons(){document.querySelectorAll('#app h2').forEach(h=>{const t=h.textContent;const f=H_ICON.find(([k])=>t.startsWith(k));if(f)h.insertAdjacentHTML('afterbegin',`<span class="ic"><svg viewBox="0 0 24 24">${ICONS[f[1]]}</svg></span>`)})}
 let toastT;function toast(m){const t=$('#toast');t.textContent=m;t.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>t.hidden=true,3200)}
 
@@ -818,6 +894,9 @@ const ACT={
   masterTab:e=>{sub.master=e.dataset.k;render()},
   recType:e=>{sub.type=e.dataset.k;render()},
   settings:()=>{if(view==='settings'){view=sub.prevView||'home'}else{sub.prevView=view;view='settings'}render();window.scrollTo(0,0)},
+  fcRec:e=>{const r=byId('records',e.dataset.id);if(!r)return;const b=Object.assign({},r,{plantingId:e.dataset.pid});delete b.splitOf;delete b.lot;delete b.memo;recordForm(r.type,b,true)},
+  cmpOpen:()=>{sub.cmpOpen=!sub.cmpOpen;render()},
+  newFromPrev:e=>{const p=byId('plantings',e.dataset.id);if(p)newFromPrev(p)},
   dpage:e=>{sub.dpage=e.dataset.k;importMsg=null;render();window.scrollTo(0,0)},
   repPrint:()=>{try{window.print()}catch(e){toast('この画面では印刷できません')}},
   repXlsx:async e=>{e.textContent='作成中…';try{await exportXlsx();toast('Excelを書き出しました')}catch(err){toast('Excelを作れませんでした。通信できる状態で一度開いてから試してください。')}render()},
@@ -894,6 +973,7 @@ document.addEventListener('change',async e=>{const el=e.target;
   if(el.dataset&&el.dataset.rep){sub.rep=Object.assign(repOpt(),{[el.dataset.rep]:el.value});render();return}
   const k=el.dataset&&el.dataset.chg;if(!k)return;
   if(k==='farm'){db.meta.farmName=el.value.trim();await save();$('#farmHd').textContent=db.meta.farmName;return}
+  if(k==='prevId'){const p=byId('plantings',el.dataset.pid);if(p){p.prevId=el.value;upsert('plantings',p);await save();render()}return}
   if(k==='recOn'){db.meta.off=Object.assign({},db.meta.off,{[el.dataset.k]:!el.checked});await save();return}
   sub[k]=el.value;render()});
 $('#modal').addEventListener('click',e=>{if(e.target.id==='modal')closeForm()});
