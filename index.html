@@ -99,6 +99,7 @@ nav button.on{color:var(--gt);font-weight:700;box-shadow:inset 0 3px 0 var(--g)}
 .frow label{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .fc{display:flex;gap:8px;align-items:center}.fc .tx{flex:1;min-width:0}.fc .d{font-weight:600;margin-right:8px;color:var(--g)}.fc .d.late{color:var(--warn)}.fc .sm{flex:0 0 auto}
 .cmp td,.cmp th{text-align:left}.cmp2{font-size:13px;width:100%;table-layout:fixed}.cmp2 td{vertical-align:top;border:1px solid var(--line);padding:4px 6px;word-break:break-all}.cmp2 th{background:var(--g2);padding:4px}
+.wbtn{display:block;margin-top:8px;background:#fff;color:var(--warn);border-color:#e3b46a}
 .okmsg{background:var(--g2);border:1px solid #9fcdbd;color:#00513e;border-radius:10px;padding:10px 12px;margin:8px 0;font-size:14px}
 .acts .pri{flex:2}
 #toast{position:fixed;left:50%;bottom:86px;transform:translateX(-50%);background:#1f2a22;color:#fff;padding:10px 16px;border-radius:8px;font-size:14px;z-index:20;max-width:90%}
@@ -286,7 +287,7 @@ function fieldHtml(d,v){
   if(t==='ref'){
     let list=live(d.ref);if(d.active)list=list.filter(x=>!x.done||x.id===v);
     const cur=v&&!list.find(x=>x.id===v)?byId(d.ref,v):null;if(cur)list=[cur].concat(list);
-    return lab+`<select id="${id}" name="${d.k}"><option value="">（選択）</option>${list.map(x=>`<option value="${x.id}" ${x.id===v?'selected':''}>${esc(refLabel(d.ref,x))}</option>`).join('')}</select>`
+    return lab+`<select id="${id}" name="${d.k}"><option value="">（選択）</option>${list.map(x=>`<option value="${x.id}" ${x.id===v?'selected':''}>${esc(d.ref==='plantings'&&d.active?(L=>L.f+'｜'+L.c)(pkLabel(x,list)):refLabel(d.ref,x))}</option>`).join('')}</select>`
       +(d.add?`<input class="new" name="${d.k}__new" placeholder="一覧にない場合は、ここに名前を入力">`:'');
   }
   if(t==='multi'){
@@ -307,6 +308,11 @@ function fieldHtml(d,v){
 }
 let formCtx=null;
 /* 作付の候補：最近記録した作付を先頭に */
+const isPC=/Windows/.test(navigator.userAgent)||(/Macintosh/.test(navigator.userAgent)&&navigator.maxTouchPoints<2);
+const fcKey=x=>x.fieldId+'|'+x.cropId;
+function pkLabel(x,list){const f=byId('fields',x.fieldId),cr=byId('crops',x.cropId);
+  const dup=(list||live('plantings').filter(y=>!y.done)).some(y=>y.id!==x.id&&fcKey(y)===fcKey(x));
+  return {f:f?f.name:'圃場未設定',c:(cr?cr.name+(cr.variety?'（'+cr.variety+'）':''):'')+(dup&&(x.season||'')?' '+x.season:dup?' '+plantYear(x)+'年':'')}}
 function pkList(){const lu={};live('records').forEach(r=>{const t=(r.date||'')+(r.updatedAt||'');if(!lu[r.plantingId]||lu[r.plantingId]<t)lu[r.plantingId]=t});
   return live('plantings').filter(x=>!x.done).sort((a,b)=>(lu[b.id]||'').localeCompare(lu[a.id]||'')||plantingLabel(a).localeCompare(plantingLabel(b),'ja'))}
 const PK_SHOW=5;
@@ -321,8 +327,8 @@ function pkChips(){
   let shown=q?list.filter(x=>kana(plantingLabel(x)+' '+(x.varietyNote||'')).includes(q)):list;
   const hidden=!q&&!c.pkAll&&shown.length>PK_SHOW?shown.length-PK_SHOW:0;
   if(hidden){const top=shown.slice(0,PK_SHOW);shown=top.concat(shown.slice(PK_SHOW).filter(x=>c.pk.includes(x.id)))}
-  const chip=x=>{const f=byId('fields',x.fieldId),cr=byId('crops',x.cropId);
-    return `<button type="button" class="chip ${c.pk.includes(x.id)?'on':''}" data-act="pk" data-id="${x.id}" aria-pressed="${c.pk.includes(x.id)}">${esc(f?f.name:'圃場未設定')}<small>${esc([cr?cr.name+(cr.variety?'（'+cr.variety+'）':''):'',x.season].filter(Boolean).join(' '))}</small></button>`};
+  const chip=x=>{const L=pkLabel(x,list);
+    return `<button type="button" class="chip ${c.pk.includes(x.id)?'on':''}" data-act="pk" data-id="${x.id}" aria-pressed="${c.pk.includes(x.id)}">${esc(L.f)}<small>${esc(L.c)}</small></button>`};
   return `<div class="chips">${shown.map(chip).join('')||'<span class="mut">該当する作付がありません</span>'}</div>
     ${hidden?`<button type="button" class="pkmore" data-act="pkAll">▼ ほか${hidden}件の作付を表示</button>`:(!q&&c.pkAll&&list.length>PK_SHOW?`<button type="button" class="pkmore" data-act="pkLess">▲ 表示を減らす</button>`:'')}`;
 }
@@ -670,7 +676,7 @@ const NAV=[['home','ホーム'],['records','一覧'],['plantings','作付'],['ma
 function backupWarn(){
   const n=live('records').length,le=db.meta.lastExport;
   if(storeMode==='mem')return '<div class="warn">この画面では端末内に保存できません。閉じる前に「データ」から書き出してください。</div>';
-  if(n&&(!le||Date.now()-new Date(le).getTime()>30*864e5))return `<div class="warn">${le?'最後の書き出しから30日以上たっています。':'まだ一度もデータを書き出していません。'}「データ」→「バックアップ・読み込み」から書き出してください。</div>`;
+  if(n&&(!le||Date.now()-new Date(le).getTime()>30*864e5))return `<div class="warn">${le?'最後の書き出しから30日以上たっています。':'まだ一度もデータを書き出していません。'}「データ」→「バックアップ・読み込み」から書き出してください。<button class="sm wbtn" data-act="goBackup">バックアップ・読み込みを開く</button></div>`;
   return '';
 }
 const APP_VER='試作4（2026年11月28日）';
@@ -722,7 +728,9 @@ function vMaster(){
     ${recOff('stockP')&&recOff('stockF')?'':`<div class="tabs" style="margin-top:6px">${[['stockP','農薬の在庫'],['stockF','肥料等の在庫']].filter(([x])=>!recOff(x)).map(([x,l])=>`<button class="tab ${k===x?'on':''}" data-act="masterTab" data-k="${x}">${l}</button>`).join('')}</div>`}`;
   if(k==='stock')sub.master='stockP';
   if(k==='stock'||k==='stockP'||k==='stockF')return head+vStock(sub.master==='stockF'?'fertilizers':'pesticides');
-  const m=MASTERS[k],list=live(k);
+  const m=MASTERS[k];let list=live(k);
+  if(k==='plantings'){const fn=x=>(byId('fields',x.fieldId)||{}).name||'',cn=x=>(byId('crops',x.cropId)||{}).name||'';
+    list=list.slice().sort((a,b)=>(a.done?1:0)-(b.done?1:0)||fn(a).localeCompare(fn(b),'ja',{numeric:true})||cn(a).localeCompare(cn(b),'ja')||plantYear(b)-plantYear(a))}
   return head+`
 <div style="margin:10px 0"><button class="pri" data-act="newMaster">＋ ${m.label}を追加</button></div>`
     +(list.length?list.map(x=>`<button class="item" data-act="editMaster" data-id="${x.id}"><div class="t">${esc(refLabel(k,x))}${m.mark?m.mark(x):''}</div>${m.sub(x)?`<div class="s">${esc(m.sub(x))}</div>`:''}</button>`).join(''):`<p class="mut">${m.label}はまだ登録されていません。</p>`);
@@ -737,7 +745,7 @@ function vData(){
     <p class="mut">書き出したファイルを保管しておくと、端末の故障や機種変更のときに元に戻せます。</p>
     <h3>データファイルを読み込む</h3><p class="mut">今のデータと統合します。同じ記録は新しいほうが残ります。</p><input type="file" id="imp">`;
   if(pg==='out')return back+`<h2>データ出力・送信</h2>`+`
-    <h3>ほかの人・端末に送る（LINE・メール）</h3>${navigator.share?`<label class="chk"><input type="checkbox" id="sharePhotos">写真を含める（通常は含めずに送ります）</label>
+    <h3>ほかの人・端末に送る（LINE・メール）</h3>${isPC?`<p class="mut">パソコンでは共有の機能がうまく働かないことがあるため、使いません。「バックアップ・読み込み」で書き出し、ダウンロードしたファイルをメールに添付するか、OneDriveなどのフォルダに入れてください。</p><button data-act="goBackup" style="width:100%">バックアップ・読み込みを開く</button>`:navigator.share?`<label class="chk"><input type="checkbox" id="sharePhotos">写真を含める（通常は含めずに送ります）</label>
     <button class="pri" data-act="shareJson" style="width:100%">共有する</button>
     <p class="mut">受け取った人には、ファイルを開かずに、栽培ノートの「データ」→「バックアップ・読み込み」から読み込むよう伝えてください。開いて文字を書き換えると読み込めなくなります。</p>`:'<p class="mut">この端末のブラウザでは共有の機能が使えません。「バックアップ・読み込み」で書き出したファイルを、メールなどに添付して送ってください。</p>'}
     <h3>表計算用データ出力（CSV）</h3><p class="mut">Excelなどで自由に集計したいときに使います。決まった様式の帳票は「帳票」から出せます。</p>
@@ -895,6 +903,7 @@ const ACT={
   recType:e=>{sub.type=e.dataset.k;render()},
   settings:()=>{if(view==='settings'){view=sub.prevView||'home'}else{sub.prevView=view;view='settings'}render();window.scrollTo(0,0)},
   fcRec:e=>{const r=byId('records',e.dataset.id);if(!r)return;const b=Object.assign({},r,{plantingId:e.dataset.pid});delete b.splitOf;delete b.lot;delete b.memo;recordForm(r.type,b,true)},
+  goBackup:()=>{view='data';sub.dpage='backup';importMsg=null;render();window.scrollTo(0,0)},
   cmpOpen:()=>{sub.cmpOpen=!sub.cmpOpen;render()},
   newFromPrev:e=>{const p=byId('plantings',e.dataset.id);if(p)newFromPrev(p)},
   dpage:e=>{sub.dpage=e.dataset.k;importMsg=null;render();window.scrollTo(0,0)},
