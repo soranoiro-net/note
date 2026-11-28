@@ -69,6 +69,11 @@ const Drive=(()=>{
       p.setVisible(true);
     });
   }
+  /* 共有ファイルの仲間（このアプリで作ったファイルだけ扱える） */
+  async function members(id){return ((await(await api(`/drive/v3/files/${id}/permissions?fields=permissions(id,type,role,emailAddress,displayName)`)).json()).permissions||[])}
+  async function addMember(id,email,msg){return (await api(`/drive/v3/files/${id}/permissions?sendNotificationEmail=true&emailMessage=${encodeURIComponent(msg||'')}&fields=id`,
+    {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({role:'writer',type:'user',emailAddress:email})})).json()}
+  async function removeMember(id,pid){await api(`/drive/v3/files/${id}/permissions/${pid}`,{method:'DELETE'})}
   function signOut(){if(tok&&window.google&&google.accounts)google.accounts.oauth2.revoke(tok,()=>{});tok=null;user=null}
-  return {ready,init,token,whoami,create,update,meta,read,list,pick,signOut,signedIn:()=>!!tok&&Date.now()<tokExp};
+  return {ready,init,token,whoami,create,update,meta,read,list,members,addMember,removeMember,pick,signOut,signedIn:()=>!!tok&&Date.now()<tokExp};
 })();

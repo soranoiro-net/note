@@ -813,7 +813,7 @@ async function exportText(withPhotos){db.meta.lastExport=new Date().toISOString(
   if(withPhotos){const ps=[];for(const id of usedPhotoIds()){const p=await photoGet(id).catch(()=>null);if(p)ps.push(p)}out.photos=ps}
   return JSON.stringify(out)}
 /* ---------- Googleドライブ（オプション） ---------- */
-let drvBusy='',drvErr='',drvLoadP=null,drvFiles=null;
+let drvBusy='',drvErr='',drvLoadP=null,drvFiles=null,drvMembers=null;
 const drv=()=>db.meta.drive||(db.meta.drive={});
 function loadDrive(){if((typeof Drive!=='undefined'))return Promise.resolve();if(!drvLoadP)drvLoadP=new Promise((res,rej)=>{const sc=document.createElement('script');sc.src='drive.js';sc.onload=res;sc.onerror=()=>{drvLoadP=null;rej(new Error('通信できません'))};document.head.appendChild(sc)})
   .then(()=>Drive.ready()?Drive.init():null);return drvLoadP}
@@ -852,7 +852,11 @@ function vDrive(){const d=drv(),busy=drvBusy,dis=busy?'disabled':'';
     ${sh?`<div class="card"><table><tr><th>共有ファイル</th><td>${esc(sh.name||'')}</td></tr><tr><th>最後の同期</th><td>${esc(fmtAt(sh.at))||'まだ'}</td></tr><tr><th>入力者の名前</th><td>${esc(d.user||'（最初の同期で取得）')}</td></tr></table></div>
       <button class="pri" data-act="shSync" style="width:100%;margin-bottom:8px" ${dis}>同期する</button>
       <p class="mut">ドライブの最新の記録を読み込んで統合し、この端末の記録を書き戻します。記録を付ける前と後に押してください。ほぼ同時に同期すると、まれに変更が反映されないことがあります。</p>
-      <a href="https://drive.google.com/file/d/${encodeURIComponent(sh.id)}/view" target="_blank" rel="noopener" class="btnlink">ドライブで共有の設定を開く</a>
+      <h3>仲間（編集者）</h3>
+      ${drvMembers?drvMembers.map(m=>`<div class="item fc"><div class="tx"><div class="t">${esc(m.displayName||m.emailAddress||'')}</div><div class="s">${esc(m.emailAddress||'')}　${m.role==='owner'?'作った人':m.role==='writer'?'編集者':'閲覧のみ'}</div></div>${m.role==='writer'?`<button class="sm" data-act="shDel" data-id="${esc(m.id)}" ${dis}>外す</button>`:''}</div>`).join('')
+        :`<button data-act="shMembers" style="width:100%;margin-bottom:8px" ${dis}>仲間を表示する</button>`}
+      <label for="shEmail">仲間を加える（GoogleアカウントのGmailアドレス）</label><div class="frow"><div class="fc" style="flex:2"><input id="shEmail" type="email" inputmode="email" placeholder="例：nakama@gmail.com"></div><div class="fc"><button data-act="shAdd" style="width:100%" ${dis}>加える</button></div></div>
+      <p class="mut">加えた人にはGoogleから案内のメールが届きます。仲間は、栽培ノートの「データ」→「Googleドライブ」→「共有ファイルを選ぶ」でこのファイルを選んでください。</p>
       <button class="sm" data-act="shOff" style="margin-top:10px" ${dis}>この端末の共有をやめる</button>`
     :`<p class="mut">同じ農場の記録を2〜5人で付けるときに使います。代表の人が共有ファイルを作り、ドライブで仲間を「編集者」に加えます。仲間は「共有ファイルを選ぶ」でそのファイルを選びます。</p>
       <button class="pri" data-act="shCreate" style="width:100%;margin-bottom:8px" ${dis}>共有ファイルを作る（代表の人）</button>
@@ -974,6 +978,12 @@ const ACT={
     if(!fs.length)throw new Error('このアプリで保存したファイルがドライブにありません。ほかのファイルは「ドライブのほかのファイルを選んで読み込む」から選んでください');
     if(fs.length===1)return loadOwn(fs[0]);drvFiles=fs;return ''}),
   drvLoadId:e=>{const f=(drvFiles||[]).find(x=>x.id===e.dataset.id);if(f)drvRun('ドライブから読み込んでいます',()=>loadOwn(f))},
+  shMembers:()=>drvRun('仲間を確認しています',async()=>{drvMembers=(await Drive.members(drv().shared.id)).filter(m=>m.type==='user');return ''}),
+  shAdd:()=>{const el=$('#shEmail'),em=(el&&el.value||'').trim();if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)){toast('メールアドレスを入れてください');return}
+    drvRun('仲間を加えています',async()=>{await Drive.addMember(drv().shared.id,em,(db.meta.farmName||'')+'の栽培ノートの共有ファイルです。栽培ノート（https://note.soranoiro.net/）の「データ」→「Googleドライブ」→「共有ファイルを選ぶ」で、このファイルを選んでください。');
+      drvMembers=(await Drive.members(drv().shared.id)).filter(m=>m.type==='user');return em+' を編集者に加えました'})},
+  shDel:e=>{const m=(drvMembers||[]).find(x=>x.id===e.dataset.id);if(!m||!confirm((m.displayName||m.emailAddress)+' を共有から外しますか？'))return;
+    drvRun('共有から外しています',async()=>{await Drive.removeMember(drv().shared.id,m.id);drvMembers=drvMembers.filter(x=>x.id!==m.id);return '共有から外しました'})},
   drvFilesX:()=>{drvFiles=null;render()},
   drvPick:()=>drvRun('ファイルを選んでいます',async()=>{const f=await Drive.pick('読み込むファイルを選ぶ');if(!f)return '';const r=await mergeText(await Drive.read(f.id));return `「${f.name}」を読み込みました（新しい記録${r.add}件）`}),
   shCreate:()=>drvRun('共有ファイルを作っています',async()=>{const d=drv();d.user=(await Drive.whoami()).displayName||'';
@@ -982,7 +992,7 @@ const ACT={
   shPick:()=>drvRun('共有ファイルを選んでいます',async()=>{const f=await Drive.pick('共有ファイルを選ぶ');if(!f)return '';
     parseData(await Drive.read(f.id));const d=drv();d.shared={id:f.id,name:f.name};const r=await syncShared();return `共有ファイルにつなぎました（新しい記録${r.add}件）`}),
   shSync:()=>drvRun('同期しています',async()=>{const r=await syncShared();return `同期しました（新しい記録${r.add}件）`}),
-  shOff:()=>{if(!confirm('この端末の共有をやめますか？（記録はこの端末に残ります。ドライブのファイルは消えません）'))return;delete drv().shared;save();render()},
+  shOff:()=>{drvMembers=null;if(!confirm('この端末の共有をやめますか？（記録はこの端末に残ります。ドライブのファイルは消えません）'))return;delete drv().shared;save();render()},
   drvOut:()=>{Drive.signOut();render()},
   goBackup:()=>{view='data';sub.dpage='backup';importMsg=null;render();window.scrollTo(0,0)},
   cmpOpen:()=>{sub.cmpOpen=!sub.cmpOpen;render()},
